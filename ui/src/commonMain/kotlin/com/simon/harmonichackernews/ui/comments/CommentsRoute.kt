@@ -45,12 +45,7 @@ fun CommentsRoute(
         cachedDescription = { story.url?.let { dependencies.previewResources.cachedLinkSummary(it)?.description } },
     )
     val commentPreferences = dependencies.userSettings.comments
-    val userTags = remember(controller.contentVersion, dependencies.userTags) {
-        dependencies.userTags.tags()
-    }
-    val userTagColors = remember(controller.contentVersion, dependencies.userTags) {
-        dependencies.userTags.colors()
-    }
+    val userTags by dependencies.userTags.updates.collectAsStateWithLifecycle(initialValue = dependencies.userTags.current())
     val openLink: (String) -> Unit = remember(dependencies.links) {
         { url: String -> dependencies.links.open(url).let { } }
     }
@@ -65,7 +60,6 @@ fun CommentsRoute(
         showScrollbar = commentPreferences.showScrollbar,
         smoothScroll = commentPreferences.smoothScroll,
         userTags = userTags,
-        userTagColors = userTagColors,
         // Keep the callback stable so CommentBodyText can retain its parsed AnnotatedString when
         // loading, voting, sheet progress, or another screen-level state causes recomposition.
         onOpenLink = openLink,

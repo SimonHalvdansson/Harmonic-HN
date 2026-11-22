@@ -8,6 +8,70 @@ import kotlin.test.assertTrue
 
 class UserTagsRepositoryTest {
     @Test
+    fun lowercaseTagFromOlderReleasesDisplaysOnMixedCaseAuthorAfterUpgrade() {
+        val archive = """{"walterbright":"dlang","another":"old label"}"""
+        val store = TestKeyValueStore(mapOf(
+            UserTagKeys.TAGS to archive,
+            UserTagKeys.COLORS to """{"walterbright":"purple"}""",
+            UserTagKeys.EXACT_TAGS to """{"another":"edited on 3.2.2"}""",
+        ))
+        val tags = UserTagsRepository(store)
+        assertEquals("dlang", tags.tagFor("WalterBright"))
+        assertEquals("dlang", tags.current().tagFor(" WalterBright "))
+        assertEquals(UserTagColor.Purple, tags.current().colorFor("WalterBright"))
+        assertEquals("", tags.tagFor("Another"))
+        assertEquals(listOf(LegacyUserTag("walterbright", "dlang", UserTagColor.Purple)), tags.legacyTags())
+
+        assertEquals(LegacyTagResolution.RESOLVED, tags.resolveLegacyTag("walterbright", "WalterBright"))
+        val reopened = UserTagsRepository(store)
+        assertEquals(mapOf("WalterBright" to "dlang", "another" to "edited on 3.2.2"), reopened.tags())
+        assertEquals(UserTagColor.Purple, reopened.colorFor("WalterBright"))
+        assertEquals("", reopened.tagFor("walterbright"))
+        assertEquals("", reopened.tagFor("WALTERBright"))
+        assertTrue(reopened.legacyTags().isEmpty())
+        assertEquals(LegacyTagResolution.NOT_FOUND, reopened.resolveLegacyTag("walterbright", "WalterBright"))
+        reopened.setTag("WalterBright", "")
+        assertEquals("", UserTagsRepository(store).tagFor("WalterBright"))
+        assertEquals(archive, store.getString(UserTagKeys.TAGS))
+    }
+
+    @Test
+    fun editingOrDeletingAnInheritedTagResolvesItsLegacySource() {
+        val store = TestKeyValueStore(mapOf(
+            UserTagKeys.TAGS to """{"alice":"old","bob":"old","eve":"old","joe":"old"}""",
+            UserTagKeys.COLORS to """{"alice":"red"}""",
+        ))
+        val tags = UserTagsRepository(store)
+        assertTrue(tags.setTag("Alice", "edited"))
+        assertTrue(tags.setTag("Bob", ""))
+        assertTrue(tags.discardLegacyTag("eve"))
+        assertFalse(tags.discardLegacyTag("eve"))
+        assertEquals(LegacyTagResolution.RESOLVED, tags.resolveLegacyTag("joe", "joe"))
+        val reopened = UserTagsRepository(store)
+        assertEquals(mapOf("Alice" to "edited", "joe" to "old"), reopened.tags())
+        assertEquals(UserTagColor.Red, reopened.colorFor("Alice"))
+        for (user in listOf("ALICE", "alice", "Bob", "BOB", "Eve", "Joe")) assertEquals("", reopened.tagFor(user))
+    }
+
+    @Test
+    fun conflictingAndDeletedSpellingsDisableFallbackAndCannotBeOverwrittenByReview() {
+        val store = TestKeyValueStore(mapOf(
+            UserTagKeys.TAGS to """{"alice":"old","bob":"old"}""",
+            UserTagKeys.EXACT_TAGS to """{"Alice":"separate"}""",
+            UserTagKeys.REVIEWED_LEGACY_TAGS to setOf("Bob"),
+        ))
+        val tags = UserTagsRepository(store)
+        assertEquals("", tags.tagFor("ALICE"))
+        assertEquals("", tags.tagFor("BOB"))
+        assertEquals(LegacyTagResolution.INVALID_USERNAME, tags.resolveLegacyTag("alice", "bob"))
+        assertEquals(LegacyTagResolution.TARGET_EXISTS, tags.resolveLegacyTag("alice", "Alice"))
+        assertEquals("separate", tags.tagFor("Alice"))
+        assertEquals("old", tags.tagFor("alice"))
+        tags.setTag("Alice", "")
+        assertEquals("", UserTagsRepository(store).tagFor("Alice"))
+    }
+
+    @Test
     fun exactIdentitiesKeepIndependentTagsAndColors() {
         val store = TestKeyValueStore()
         val repository = UserTagsRepository(store)
@@ -40,7 +104,7 @@ class UserTagsRepositoryTest {
         assertEquals("lowercase", repository.tagFor("alice"))
         assertEquals("", repository.tagFor("ALICE"))
         assertEquals(mapOf("Alice" to UserTagColor.Purple, "alice" to UserTagColor.Red, "bob" to UserTagColor.Green), repository.colors())
-        assertEquals(emptyList(), repository.legacyTags())
+        assertEquals(listOf("alice", "bob"), repository.legacyTags().map { it.username })
         assertEquals(legacy, store.getString(UserTagKeys.TAGS))
         assertEquals(legacyColors, store.getString(UserTagKeys.COLORS))
         assertFalse(store.contains(UserTagKeys.EXACT_TAGS))

@@ -1,6 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
-import com.simon.harmonichackernews.settings.UserTagColor
+import com.simon.harmonichackernews.settings.UserTagsSnapshot
 
 import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
 import com.simon.harmonichackernews.ui.theme.onFloatingContainer
@@ -211,13 +211,12 @@ fun CommentsScreen(
     animateComments: Boolean,
     showScrollbar: Boolean,
     smoothScroll: Boolean,
-    userTags: Map<String, String>,
+    userTags: UserTagsSnapshot = UserTagsSnapshot(emptyMap(), emptyMap()),
     onOpenLink: (String) -> Unit,
     headerContent: @Composable () -> Unit,
     searchDialog: @Composable () -> Unit,
     actionOverlay: @Composable () -> Unit,
     listState: LazyListState = rememberCommentsListState(),
-    userTagColors: Map<String, UserTagColor> = emptyMap(),
 ) {
     val settings = controller.displaySettings
     if (settings == null) {
@@ -500,7 +499,7 @@ fun CommentsScreen(
             },
         ) { index, item ->
                 val exiting = item.comment.id in animatedRows.exitingIds
-                val tag = item.comment.by?.trim()?.let(userTags::get)
+                val tag = userTags.tagFor(item.comment.by)
                 val suppressed = item.comment.id in controller.suppressedCommentIds
                 val keepActionSourceVisible =
                     controller.shouldKeepCommentActionSourceVisible(item.comment.id)
@@ -517,8 +516,7 @@ fun CommentsScreen(
                     storyAuthor = controller.story.by,
                     accountUser = controller.accountUser,
                     userTag = tag,
-                    userTagColor = item.comment.by?.trim()?.let(userTagColors::get)
-                        ?: UserTagColor.Theme,
+                    userTagColor = userTags.colorFor(item.comment.by),
                     subtreeReplyCount = item.subtreeReplyCount,
                     collapseParent = settings.collapseParent,
                     showTopLevelIndicator = settings.showTopLevelDepthIndicator,

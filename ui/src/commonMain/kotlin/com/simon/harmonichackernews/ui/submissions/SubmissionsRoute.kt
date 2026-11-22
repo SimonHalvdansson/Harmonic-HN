@@ -14,7 +14,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.toArgb
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.data.StoryResourceTintStore
-import com.simon.harmonichackernews.settings.UserTagColor
 import com.simon.harmonichackernews.network.StoryPreviewResourceService
 import com.simon.harmonichackernews.presentation.StoryListResourceRuntime
 import com.simon.harmonichackernews.presentation.StoryDisplaySettings
@@ -44,7 +43,6 @@ fun SubmissionsRoute(
     val state by store.state.collectAsStateWithLifecycle()
     val userTags = dependencies.userTags
     val tags by userTags.updates.collectAsStateWithLifecycle(initialValue = userTags.current())
-    val username = userName.trim()
     val onIntent = remember(store) { { intent: SubmissionsIntent -> store.accept(intent) } }
     val scope = rememberCoroutineScope()
     val previewResources = remember(scope, previewService, tintStore) {
@@ -62,8 +60,8 @@ fun SubmissionsRoute(
     key(store) {
         SubmissionsScreen(
             userName = userName,
-            userTag = tags.tags[username].orEmpty(),
-            tagColor = tags.colors[username] ?: UserTagColor.Theme,
+            userTag = tags.tagFor(userName),
+            tagColor = tags.colorFor(userName),
             state = state,
             displaySettings = displaySettings,
             initialScrollRestoration = initialScrollRestoration,

@@ -169,15 +169,15 @@ class SettingsPresentersTest {
     }
 
     @Test
-    fun legacyStoredSpellingsAreActiveWithoutReview() {
+    fun settingsOffersCapitalizationReviewOnlyForOlderLowercaseTags() {
         val store = InMemoryKeyValueStore()
         val originalTags = """{"Alice":"case retained","alice":"stored lowercase"}"""
         store.putString(com.simon.harmonichackernews.settings.UserTagKeys.TAGS, originalTags)
         store.putString(com.simon.harmonichackernews.settings.ContentFilterKeys.USERS, "alice")
         val settings = AppSettingsRepository(store, store.changes)
         val presenter = FiltersTagsSettingsPresenter(settings, ContentFilterRepository(store), UserTagsRepository(store))
-        assertEquals(listOf("Alice", "alice"), presenter.state().tags.map { it.username })
-        assertEquals(emptyList(), presenter.state().legacyTags)
+        assertEquals(listOf("Alice"), presenter.state().tags.map { it.username })
+        assertEquals(listOf(TaggedUserUi("alice", "stored lowercase")), presenter.state().legacyTags)
         assertEquals(1, presenter.state().blockedUserCount)
         assertEquals(0, presenter.state().legacyBlockedUserCount)
         assertEquals(originalTags, store.getString(com.simon.harmonichackernews.settings.UserTagKeys.TAGS))

@@ -183,7 +183,7 @@ fun LegacyUsernameReviewDialog(
     onResolve: (String) -> String?,
     onDismiss: () -> Unit,
 ) {
-    var username by rememberSaveable(savedUsername) { mutableStateOf("") }
+    var username by rememberSaveable(savedUsername) { mutableStateOf(if (savedTag == null) "" else savedUsername) }
     var error by rememberSaveable(savedUsername) { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     val dismissal = remember { SettingsDialogDismissState() }
@@ -206,7 +206,12 @@ fun LegacyUsernameReviewDialog(
             CompleteSettingsDialogDismissal(dismissal)
             RequestSettingsDialogFocus(focus, enabled = !dismissal.isClosing)
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("The saved username “$savedUsername” may have lost its capitalization in an older version. It is inactive until you confirm the exact HN username.",
+                val explanation = if (savedTag == null) {
+                    "The saved username “$savedUsername” may have lost its capitalization in an older version. It is inactive until you confirm the exact HN username."
+                } else {
+                    "Older versions may have saved “$savedUsername” in lowercase. Confirm the spelling used on Hacker News to tag that account."
+                }
+                Text(explanation,
                     fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 savedTag?.let { Text("Saved tag: $it", fontFamily = AppUiFontFamily) }
                 OutlinedTextField(

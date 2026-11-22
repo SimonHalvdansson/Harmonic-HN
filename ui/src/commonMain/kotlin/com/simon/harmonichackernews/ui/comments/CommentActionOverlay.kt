@@ -137,8 +137,8 @@ fun CommentActionOverlay(
     val comment = state.comment
     val tags = userTags?.let { it.updates.collectAsStateWithLifecycle(initialValue = it.current()).value }
     val username = comment.by.orEmpty().trim()
-    val userTag = tags?.tags?.get(username).orEmpty()
-    val tagColor = tags?.colors?.get(username) ?: UserTagColor.Theme
+    val userTag = tags?.tagFor(username).orEmpty()
+    val tagColor = tags?.colorFor(username) ?: UserTagColor.Theme
     val discussionProgress = rememberAskProgress(controller.askOpen, controller.askBackProgress)
     val discussionVisible by remember(discussionProgress, controller) {
         computedStateOf { discussionProgress.value > 0f || controller.askOpen }

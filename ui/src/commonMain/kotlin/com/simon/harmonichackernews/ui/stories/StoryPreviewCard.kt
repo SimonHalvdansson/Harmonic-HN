@@ -223,7 +223,7 @@ fun StoryPreviewCard(
     }
     val dependencies = LocalHarmonicUiDependencies.current
     val authorTags by dependencies.userTags.updates.collectAsStateWithLifecycle(initialValue = dependencies.userTags.current())
-    val authorTag = authorTags.tags[story.author].orEmpty()
+    val authorTag = authorTags.tagFor(story.author)
     val categoryPreferences by dependencies.articleCategorySettings.updates.collectAsStateWithLifecycle(
         initialValue = dependencies.articleCategorySettings.snapshot(),
     )
@@ -399,7 +399,7 @@ fun StoryPreviewCard(
                     if (authorTag.isNotBlank()) {
                         StoryPreviewSharedElement(StoryPreviewSharedElement.Author, Modifier.padding(top = 6.dp)) {
                             StoryAuthorTag(story.author.orEmpty(), authorTag,
-                                authorTags.colors[story.author] ?: com.simon.harmonichackernews.settings.UserTagColor.Theme,
+                                authorTags.colorFor(story.author),
                                 typography, if (settings.tintCardsFromImages) ({ cardColor }) else null)
                         }
                     }

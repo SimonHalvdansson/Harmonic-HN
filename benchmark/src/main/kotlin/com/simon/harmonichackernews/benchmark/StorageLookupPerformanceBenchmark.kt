@@ -26,7 +26,7 @@ class StorageLookupPerformanceBenchmark {
     fun userTagAmong200() {
         val repository = UserTagsRepository(InMemoryKeyValueStore().apply {
             putString(UserTagKeys.TAGS, (0 until 200).joinToString(",", "{", "}") {
-                "\"User$it\":\"tag$it\""
+                "\"user$it\":\"tag$it\""
             })
         })
         check(repository.tagFor(" USER199 ") == "tag199")

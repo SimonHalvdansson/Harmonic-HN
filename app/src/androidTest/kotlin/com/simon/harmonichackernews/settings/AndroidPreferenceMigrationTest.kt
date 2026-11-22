@@ -100,7 +100,7 @@ class AndroidPreferenceMigrationTest {
                 prefix + "KEY_SHARED_PREFERENCES_HISTORIES" to "42q1700000000000-99q1700000001000",
                 prefix + "KEY_SHARED_PREFERENCES_FAVORITE_COMMENTS" to setOf("102", "103"),
                 prefix + "KEY_SHARED_PREFERENCES_UPVOTED_COMMENTS" to setOf("102"),
-                prefix + "KEY_SHARED_PREFERENCES_USER_TAGS" to "{\"alice\":\"friend\"}",
+                prefix + "KEY_SHARED_PREFERENCES_USER_TAGS" to """{"walterbright":"dlang"}""",
                 prefix + "KEY_SHARED_PREFERENCES_WELCOME_DIALOG_SHOWN" to true,
                 prefix + "KEY_SHARED_PREFERENCES_LAST_VERSION" to 301,
                 prefix + "KEY_NIGHTTIME_FROM_HOUR" to 22,
@@ -146,6 +146,9 @@ class AndroidPreferenceMigrationTest {
                 }
                 useStore(context, name) { store ->
                     assertValues(expected, store)
+                    if (name == prefix + "GLOBAL_SHARED_PREFERENCES_KEY") {
+                        assertEquals("dlang", UserTagsRepository(store).tagFor("WalterBright"))
+                    }
                     assertEquals("after upgrade", store.getString("new_setting"))
                     assertFalse(store.contains("pref_ai_summary_api_key"))
                 }

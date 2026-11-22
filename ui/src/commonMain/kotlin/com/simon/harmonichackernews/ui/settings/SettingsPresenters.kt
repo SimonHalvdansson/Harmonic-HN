@@ -343,18 +343,21 @@ class FiltersTagsSettingsPresenter(
     private val filters: ContentFilterRepository,
     private val userTags: UserTagsRepository,
 ) {
-    fun state(snapshot: AppSettings = settings.snapshot()): FiltersTagsSettingsUiState =
-        FiltersTagsSettingsUiState(
-            tags = userTags.tags()
+    fun state(snapshot: AppSettings = settings.snapshot()): FiltersTagsSettingsUiState {
+        val legacy = userTags.legacyTags()
+        val reviewable = legacy.mapTo(mutableSetOf()) { it.username }
+        return FiltersTagsSettingsUiState(
+            tags = userTags.tags().filterKeys { it !in reviewable }
                 .map { TaggedUserUi(it.key, it.value, userTags.colorFor(it.key)) }
                 .sortedWith(compareBy<TaggedUserUi> { it.username.lowercase() }.thenBy { it.username }),
-            legacyTags = userTags.legacyTags().map { TaggedUserUi(it.username, it.tag, it.color) },
+            legacyTags = legacy.map { TaggedUserUi(it.username, it.tag, it.color) },
             blockedUserCount = filters.items(ContentFilterType.USER).size,
             legacyBlockedUserCount = filters.legacyUsers().size,
             titleFilterCount = filters.titleRules().size,
             domainFilterCount = filters.domainRules().size,
             hideJobs = snapshot.story.hideJobs,
         )
+    }
 
     fun setHideJobs(value: Boolean) =
         settings.setStoryBoolean(StoryBooleanPreference.HIDE_JOBS, value)

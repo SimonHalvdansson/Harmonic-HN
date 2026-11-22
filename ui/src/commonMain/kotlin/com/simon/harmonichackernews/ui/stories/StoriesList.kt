@@ -448,8 +448,8 @@ internal fun StoriesList(
                             )
                             // Rebuild cached ages on resume, and palette tints when the theme's
                             // card background changes.
-                            val authorTag = authorTags.tags[story.by].orEmpty()
-                            val authorColor = authorTags.colors[story.by] ?: com.simon.harmonichackernews.settings.UserTagColor.Theme
+                            val authorTag = authorTags.tagFor(story.by)
+                            val authorColor = authorTags.colorFor(story.by)
                             val model = remember(
                                 story,
                                 index,

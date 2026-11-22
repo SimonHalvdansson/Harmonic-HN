@@ -91,7 +91,7 @@ class CommentsHeaderMotionTest {
                         CommentsScreen(
                             controller, Modifier, false, pullToRefreshEnabled = false,
                             showNavigationControls = false, animateComments = true, showScrollbar = false,
-                            smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                            smoothScroll = true, onOpenLink = {},
                             headerContent = {}, searchDialog = {}, actionOverlay = {},
                         )
                     }
@@ -253,7 +253,7 @@ class CommentsHeaderMotionTest {
                                     controller = controller, listModifier = Modifier, reserveUpButtonInset = false,
                                     pullToRefreshEnabled = false, showNavigationControls = false,
                                     animateComments = true, showScrollbar = false, smoothScroll = true,
-                                    userTags = emptyMap(), onOpenLink = {}, searchDialog = {}, actionOverlay = {},
+                                    onOpenLink = {}, searchDialog = {}, actionOverlay = {},
                                     headerContent = {
                                         Column(Modifier.fillMaxWidth().background(Color.White).testTag("refresh-header")) {
                                             Box(Modifier.height(80.dp))
@@ -366,7 +366,7 @@ class CommentsHeaderMotionTest {
                             controller = controller, listModifier = Modifier, reserveUpButtonInset = false,
                             pullToRefreshEnabled = false, showNavigationControls = false,
                             animateComments = true, showScrollbar = false, smoothScroll = true,
-                            userTags = emptyMap(), onOpenLink = {}, searchDialog = {}, actionOverlay = {},
+                            onOpenLink = {}, searchDialog = {}, actionOverlay = {},
                             headerContent = {
                                 val animatedHeight by animateDpAsState(height.value, tween(240))
                                 Box(Modifier.fillMaxWidth().height(animatedHeight).testTag("preview-header"))
@@ -455,7 +455,7 @@ class CommentsHeaderMotionTest {
                         CommentsScreen(
                             controller, Modifier, false, pullToRefreshEnabled = true,
                             showNavigationControls = false, animateComments = true, showScrollbar = false,
-                            smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                            smoothScroll = true, onOpenLink = {},
                             searchDialog = {}, actionOverlay = {},
                             headerContent = {
                                 androidx.compose.runtime.DisposableEffect(Unit) {

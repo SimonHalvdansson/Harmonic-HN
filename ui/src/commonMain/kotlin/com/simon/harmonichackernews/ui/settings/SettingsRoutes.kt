@@ -773,7 +773,7 @@ fun FiltersTagsSettingsRoute(
                         com.simon.harmonichackernews.settings.LegacyTagResolution.TARGET_EXISTS ->
                             "That exact user already has a tag. Both saved tags have been kept."
                         com.simon.harmonichackernews.settings.LegacyTagResolution.INVALID_USERNAME ->
-                            "Enter the exact username."
+                            "Use the same username with the capitalization shown on Hacker News."
                         com.simon.harmonichackernews.settings.LegacyTagResolution.INVALID_DATA ->
                             "The saved tag data could not be read. It has been kept unchanged."
                         com.simon.harmonichackernews.settings.LegacyTagResolution.NOT_FOUND ->

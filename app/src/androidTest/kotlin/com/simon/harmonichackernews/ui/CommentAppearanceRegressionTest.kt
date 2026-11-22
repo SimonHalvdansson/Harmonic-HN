@@ -86,7 +86,7 @@ class CommentAppearanceRegressionTest {
                     HarmonicTheme(palette.colorScheme, false) {
                         CommentsScreen(controller, Modifier.height(600.dp), false, pullToRefreshEnabled = false,
                             showNavigationControls = false, animateComments = true, showScrollbar = true,
-                            smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                            smoothScroll = true, onOpenLink = {},
                             headerContent = {}, searchDialog = {}, actionOverlay = {})
                     }
                 }
@@ -187,7 +187,7 @@ class CommentAppearanceRegressionTest {
                                 CommentsScreen(
                                     controller, Modifier, false, pullToRefreshEnabled = false,
                                     showNavigationControls = false, animateComments = false, showScrollbar = false,
-                                    smoothScroll = false, userTags = emptyMap(), onOpenLink = {},
+                                    smoothScroll = false, onOpenLink = {},
                                     headerContent = {
                                         Canvas(Modifier.fillMaxWidth().height(260.dp)) {
                                             for (x in listOf(20.dp, 110.dp)) {
@@ -989,7 +989,7 @@ class CommentAppearanceRegressionTest {
                             CommentsScreen(
                                 controller, Modifier, false, pullToRefreshEnabled = false,
                                 showNavigationControls = false, animateComments = true, showScrollbar = true,
-                                smoothScroll = true, userTags = emptyMap(), onOpenLink = {},
+                                smoothScroll = true, onOpenLink = {},
                                 headerContent = {}, searchDialog = {}, actionOverlay = {},
                             )
                         }

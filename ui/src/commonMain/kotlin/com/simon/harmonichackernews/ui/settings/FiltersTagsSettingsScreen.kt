@@ -114,7 +114,7 @@ fun FiltersTagsSettingsScreen(
                 )
             }
         }
-        item {
+        if (state.tags.isNotEmpty() || state.legacyTags.isEmpty()) item {
             SettingsCategory("Tagged users") {
                 AnimatedContent(
                     targetState = state.tags,
@@ -182,17 +182,16 @@ fun FiltersTagsSettingsScreen(
             }
         }
         if (state.legacyTags.isNotEmpty()) item {
-            SettingsCategory("Tags needing review (${state.legacyTags.size})") {
+            SettingsCategory("Confirm older usernames (${state.legacyTags.size})") {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Inactive until confirmed", color = MaterialTheme.colorScheme.primary)
-                    Text("Older versions discarded capitalization. These tags are saved but will not appear on profiles or comments until you confirm the exact username.",
+                    Text("Older versions saved some usernames in lowercase. Confirm the capitalization to limit a tag to the account you intended.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                 }
                 state.legacyTags.forEachIndexed { index, entry ->
                     SettingRow(
                         title = entry.username,
-                        summary = "Inactive · ${entry.tag}",
+                        summary = entry.tag,
                         summaryColor = userTagColor(entry.color),
                         icon = Res.drawable.ic_person,
                         onClick = { onLegacyTagReviewRequested(entry.username) },
