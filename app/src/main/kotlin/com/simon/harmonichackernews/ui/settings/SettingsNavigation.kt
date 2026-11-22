@@ -44,7 +44,7 @@ fun SettingsShell(
     val settingsAccountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
-    val naturalVoiceAvailable by produceState<Boolean?>(null, configuration.locales) {
+    val naturalVoiceAvailable by produceState(false, configuration.locales) {
         value = naturalVoiceAvailability()
     }
     val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
@@ -73,7 +73,7 @@ fun SettingsShell(
         directive = directive,
         supportsTwoPane = supportsTwoPane,
         searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true,
-            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable == true),
+            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable),
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,

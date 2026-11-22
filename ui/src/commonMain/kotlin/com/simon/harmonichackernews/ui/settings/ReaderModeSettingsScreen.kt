@@ -20,7 +20,7 @@ fun ReaderModeSettingsRoute(
     onBack: () -> Unit,
     preview: @Composable (ReadingPreferences, Boolean) -> Unit,
     miniPlayerSettingVisible: Boolean = true,
-    naturalVoiceAvailable: Boolean? = null,
+    naturalVoiceAvailable: Boolean = false,
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
@@ -98,18 +98,14 @@ fun ReaderModeSettingsRoute(
                         onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, it) },
                     )
                 }
-                if (naturalVoiceAvailable != null) {
+                if (naturalVoiceAvailable) {
                     SettingsDivider()
                     SwitchSettingRow(
                         title = "Use ML Kit voice",
-                        summary = if (naturalVoiceAvailable) {
-                            "Download a natural voice for playback at 1× speed"
-                        } else {
-                            "Natural voice unavailable on this device"
-                        },
+                        summary = "Download a natural voice for playback at 1× speed",
                         icon = Res.drawable.ic_auto_awesome,
-                        checked = naturalVoiceAvailable && reading.preferNaturalVoice,
-                        enabled = speechEnabled && naturalVoiceAvailable,
+                        checked = reading.preferNaturalVoice,
+                        enabled = speechEnabled,
                         onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.PREFER_NATURAL_VOICE, it) },
                     )
                 }
