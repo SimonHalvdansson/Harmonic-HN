@@ -48,7 +48,10 @@ fun HackerNewsItemDto.applyTo(story: Story, preserveTime: Boolean = false): Bool
     story.by = author
     story.id = id
     story.score = score
-    if (!preserveTime) story.createdAtEpochSeconds = time
+    if (preserveTime) story.originalCreatedAtEpochSeconds = time else {
+        story.createdAtEpochSeconds = time
+        story.originalCreatedAtEpochSeconds = null
+    }
     story.title = title
     story.isComment = type == "comment"
     story.descendants = if (story.isComment) kids.size else descendants

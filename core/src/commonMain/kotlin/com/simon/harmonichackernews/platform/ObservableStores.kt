@@ -67,6 +67,9 @@ interface ObservableHistoryStore : HistoryStore {
     /** Returns a stable snapshot after any asynchronous initialization has finished. */
     suspend fun awaitHistories(): List<History> = load()
     suspend fun recordHistory(id: Int, createdAtMillis: Long): Boolean
+    suspend fun recordHistories(ids: List<Int>, createdAtMillis: Long) {
+        for (id in ids) recordHistory(id, createdAtMillis)
+    }
     suspend fun removeHistory(id: Int): Boolean
     suspend fun clearHistory()
     fun close() = Unit
@@ -136,6 +139,13 @@ class StoredHistoryStore(
                 }
             }
         }
+
+    override suspend fun recordHistories(ids: List<Int>, createdAtMillis: Long) = withContext(storageDispatcher) {
+        initialization.await()
+        mutationMutex.withLock {
+            if (ledger.recordAll(ids, createdAtMillis)) persistAndPublish()
+        }
+    }
 
     override suspend fun removeHistory(id: Int): Boolean = withContext(storageDispatcher) {
         initialization.await()

@@ -183,10 +183,8 @@ class StoryCacheService(
             }
         }
 
-    suspend fun storeStory(id: Int, payload: String): Boolean = withContext(Dispatchers.Default) {
-        // Background/offline downloads enter here without a parsed response. Prepare them eagerly
-        // too, so their first offline open gets the same benefit as an already-viewed thread.
-        val summary = try {
+    private suspend fun prepareSummary(payload: String): AlgoliaStorySummary? =
+        try {
             commentsParser.prepare(payload).cacheSummary()
         } catch (error: CancellationException) {
             throw error
@@ -195,12 +193,23 @@ class StoryCacheService(
         } catch (_: ApiDecodingException) {
             null
         }
+
+    suspend fun storeStory(id: Int, payload: String): Boolean = withContext(Dispatchers.Default) {
+        val summary = prepareSummary(payload)
         writeMutex.withLock { repository.storeStory(id, payload, nowMillis(), summary) }
     }
 
-    override suspend fun cacheStory(id: Int, payload: String) {
-        check(storeStory(id, payload)) { "Could not save story $id" }
-    }
+    override suspend fun cacheStory(id: Int, payload: String, download: StoryDownloadPosition?): String? =
+        withContext(Dispatchers.Default) {
+            val summary = prepareSummary(payload)
+            writeMutex.withLock {
+                check(repository.storeStory(id, payload, nowMillis(), summary, download)) { "Could not save story $id" }
+            }
+            // Older responses that only the compact header parser accepts can also contain a URL.
+            val url = if (summary != null) summary.preparedThread?.story?.url
+                else repository.loadStoryHeader(id, rebuildIfMissing = false)?.articleUrl
+            url?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+        }
 
     suspend fun cacheParsedStory(
         id: Int,

@@ -31,6 +31,7 @@ class StoryFeedRefreshPolicyTest {
         assertEquals(StoryFeedSource.USER_ITEMS, plan(StoryType.FAVORITES).source)
         assertEquals(StoryFeedSource.USER_ITEMS, plan(StoryType.UPVOTED).source)
         assertEquals(StoryFeedSource.HISTORY, plan(StoryType.HISTORY).source)
+        assertEquals(StoryFeedSource.DOWNLOADS, plan(StoryType.DOWNLOADS).source)
         assertEquals(StoryFeedSource.SCRAPED_FRONTPAGE, plan(StoryType.FRONT).source)
         assertEquals(StoryFeedSource.SCRAPED_FRONTPAGE, plan(StoryType.CLASSIC).source)
         assertEquals(StoryFeedSource.UNSLOP_RSS, plan(StoryType.UNSLOP).source)
@@ -55,7 +56,6 @@ class StoryFeedRefreshPolicyTest {
         assertFalse(plan.showRefreshIndicator)
         assertTrue(plan.clearItems)
         assertTrue(plan.loadCachedUserItems)
-        assertTrue(plan.recordRefreshTime)
     }
 
     @Test
@@ -91,11 +91,15 @@ class StoryFeedRefreshPolicyTest {
 
     @Test
     fun updateAffordanceAppearsOnlyForStaleRefreshableFeedsUnlessForced() {
-        val staleNow = StoryFeedRefreshPolicy.STALE_AFTER_MILLIS + 1
+        val staleNow = StoryFeedRefreshPolicy.STALE_AFTER_MILLIS + 2
 
         assertTrue(updateVisible(staleNow, StoryType.TOP_STORIES))
         assertFalse(updateVisible(StoryFeedRefreshPolicy.STALE_AFTER_MILLIS, StoryType.TOP_STORIES))
         assertFalse(updateVisible(staleNow, StoryType.BOOKMARKS))
+        assertFalse(updateVisible(staleNow, StoryType.DOWNLOADS))
+        assertFalse(StoryFeedRefreshPolicy.shouldShowRefreshPrompt(
+            staleNow, 0, alwaysShow = false, searching = false, StoryType.TOP_STORIES,
+        ))
         assertFalse(updateVisible(staleNow, StoryType.LAST_WEEK))
         assertFalse(updateVisible(staleNow, StoryType.TOP_STORIES, searching = true))
         assertTrue(
@@ -140,7 +144,7 @@ class StoryFeedRefreshPolicyTest {
         searching: Boolean = false,
     ) = StoryFeedRefreshPolicy.shouldShowRefreshPrompt(
         nowMillis = nowMillis,
-        lastLoadedMillis = 0,
+        lastLoadedMillis = 1,
         alwaysShow = false,
         searching = searching,
         storyType = type,

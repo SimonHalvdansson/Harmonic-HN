@@ -59,6 +59,7 @@ data class StoryPresentationSnapshot(
     override val linkPreviewInfo: LinkPreviewInfo? = null,
     val linkPreviewLoading: Boolean = false,
     val aiSummaryTruncated: Boolean = false,
+    val cachedAtMillis: Long? = null,
 ) : LinkPreviewState
 
 @Serializable
@@ -138,6 +139,7 @@ fun Story.toSnapshot(): StorySnapshot = StorySnapshot(
 
 fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationSnapshot(
     loaded = loaded,
+    cachedAtMillis = cachedAtMillis,
     isRead = isRead,
     loadingFailed = loadingFailed,
     isLink = isLink,
@@ -168,19 +170,7 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     ),
     linkSummaryDescription = linkSummaryDescription,
     linkSummaryLoaded = linkSummaryLoaded,
-    rootStory = if (rootStoryId == 0 && rootStoryTitle == null && rootStoryUrl == null &&
-        rootStoryAuthor == null && rootStoryScore == 0 && rootStoryCreatedAtEpochSeconds == 0 &&
-        rootStoryDescendantCount == 0 && !rootStoryLoaded
-    ) EmptyStoryResources.root else CommentMasterSnapshot(
-        id = rootStoryId,
-        title = rootStoryTitle,
-        url = rootStoryUrl,
-        author = rootStoryAuthor,
-        score = rootStoryScore,
-        createdAtEpochSeconds = rootStoryCreatedAtEpochSeconds,
-        descendantCount = rootStoryDescendantCount,
-        loaded = rootStoryLoaded,
-    ),
+    rootStory = rootStorySnapshot(),
     aiSummaryText = aiSummaryText,
     aiSummarySourceText = aiSummarySourceText,
     aiSummaryTruncated = aiSummaryTruncated,
@@ -199,6 +189,15 @@ fun Story.presentationSnapshot(): StoryPresentationSnapshot = StoryPresentationS
     linkPreviewInfo = linkPreviewInfo,
     linkPreviewLoading = linkPreviewLoading,
 )
+
+internal fun Story.rootStorySnapshot(): CommentMasterSnapshot =
+    if (rootStoryId == 0 && rootStoryTitle == null && rootStoryUrl == null && rootStoryAuthor == null &&
+        rootStoryScore == 0 && rootStoryCreatedAtEpochSeconds == 0 && rootStoryDescendantCount == 0 && !rootStoryLoaded
+    ) EmptyStoryResources.root else CommentMasterSnapshot(
+        id = rootStoryId, title = rootStoryTitle, url = rootStoryUrl, author = rootStoryAuthor,
+        score = rootStoryScore, createdAtEpochSeconds = rootStoryCreatedAtEpochSeconds,
+        descendantCount = rootStoryDescendantCount, loaded = rootStoryLoaded,
+    )
 
 // These values contain no mutable data. Most feed rows have no resources or root-story
 // enrichment yet, so share the exact empty values without changing snapshot/serialized fields.

@@ -46,6 +46,7 @@ fun BoxScope.PortableAppForeground(
     if (navigation.cacheStoriesDialogVisible) {
         CacheStoriesDialog(
             initialStoryCount = app.userSettings.cache.storiesToCache,
+            availableStoryCount = storiesController?.availableStoriesToCache() ?: 0,
             integratedWebView = app.supportsArticleSnapshots && app.userSettings.reading.integratedWebView,
             onDismiss = scene.navigation::dismissCacheStoriesDialog,
             onConfirm = { count, downloadWebViewContents ->

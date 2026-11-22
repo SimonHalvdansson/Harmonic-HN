@@ -16,6 +16,7 @@ internal class SearchQuerySubmission(initialDraft: String) {
     /** Returns a replacement query only for text committed after the Search action. */
     fun updateDraft(value: String): String? {
         draft = value
+        if (value.isEmpty()) submittedQuery = null
         return if (submittedQuery != null && submittedQuery != value) {
             submittedQuery = value
             value

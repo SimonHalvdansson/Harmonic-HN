@@ -1,7 +1,6 @@
 package com.simon.harmonichackernews.cache
 
 import com.simon.harmonichackernews.StoryType
-import com.simon.harmonichackernews.data.StoryCachePayloadParser
 import com.simon.harmonichackernews.network.AlgoliaRepository
 import com.simon.harmonichackernews.network.HackerNewsRepository
 import kotlinx.coroutines.CancellationException
@@ -12,15 +11,21 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import kotlin.time.Clock
 
 interface StoryCacheSink {
-    suspend fun cacheStory(id: Int, payload: String)
+    /** Returns the article URL from the stored thread, when it has one. */
+    suspend fun cacheStory(id: Int, payload: String, download: StoryDownloadPosition? = null): String?
     suspend fun cacheArticle(id: Int, url: String): Boolean
 }
+
+data class StoryDownloadPosition(val startedAtMillis: Long, val index: Int)
 
 data class StoryCacheRequest(
     val storyCount: Int,
     val cacheArticleSnapshots: Boolean,
+    // Count-only callers retain their original Top Stories source.
+    val storyIds: List<Int>? = null,
 )
 
 data class StoryCacheProgress(
@@ -40,6 +45,7 @@ class StoryCacheUseCase(
     private val hackerNewsRepository: HackerNewsRepository,
     private val algoliaRepository: AlgoliaRepository,
     private val sink: StoryCacheSink,
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     suspend fun execute(
         request: StoryCacheRequest,
@@ -47,8 +53,12 @@ class StoryCacheUseCase(
     ): StoryCacheOutcome {
         if (request.storyCount <= 0) return StoryCacheOutcome.EMPTY
         val storyIds = try {
-            hackerNewsRepository.getStoryIds(StoryType.TOP_STORIES)
+            (request.storyIds ?: hackerNewsRepository.getStoryIds(StoryType.TOP_STORIES))
+                .asSequence()
+                .filter { it > 0 }
+                .distinct()
                 .take(request.storyCount)
+                .toList()
         } catch (error: CancellationException) {
             throw error
         } catch (_: Throwable) {
@@ -56,22 +66,21 @@ class StoryCacheUseCase(
         }
         if (storyIds.isEmpty()) return StoryCacheOutcome.EMPTY
 
+        val startedAtMillis = nowMillis()
         var completed = 0
         val progressMutex = Mutex()
         val concurrency = Semaphore(MAX_CONCURRENT_STORY_CACHES)
         val outcomes = coroutineScope {
-            storyIds.map { id ->
+            storyIds.mapIndexed { index, id ->
                 async {
                     val outcome = concurrency.withPermit {
                         var storySaved = false
                         try {
                             val payload = algoliaRepository.getItemJson(id)
-                            sink.cacheStory(id, payload)
+                            val url = sink.cacheStory(id, payload, StoryDownloadPosition(startedAtMillis, index))
                             storySaved = true
-                            if (request.cacheArticleSnapshots) {
-                                StoryCachePayloadParser.externalArticleUrl(payload)?.let { url ->
-                                    if (!sink.cacheArticle(id, url)) return@withPermit StoryCacheOutcome.PARTIAL
-                                }
+                            if (request.cacheArticleSnapshots && url != null && !sink.cacheArticle(id, url)) {
+                                return@withPermit StoryCacheOutcome.PARTIAL
                             }
                             StoryCacheOutcome.FINISHED
                         } catch (error: CancellationException) {

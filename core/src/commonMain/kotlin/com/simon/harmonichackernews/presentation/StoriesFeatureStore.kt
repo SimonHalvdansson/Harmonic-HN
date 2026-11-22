@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.presentation
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.cache.StoryCacheRuntime
 import com.simon.harmonichackernews.cache.StoryCacheState
+import com.simon.harmonichackernews.cache.StoryCacheStatus
 import com.simon.harmonichackernews.data.CommentedStoriesStore
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.Story
@@ -91,6 +92,7 @@ sealed interface StoriesIntent {
     data class SelectType(val index: Int) : StoriesIntent
     data object OpenSearch : StoriesIntent
     data object CloseSearch : StoriesIntent
+    data object ClearSearch : StoriesIntent
     data class Search(val query: String) : StoriesIntent
     data class SelectSearchOption(val kind: StorySearchOption, val index: Int) : StoriesIntent
     data class Refresh(val showMainLoadingIndicator: Boolean = false) : StoriesIntent
@@ -156,6 +158,8 @@ class StoriesFeatureStore internal constructor(
 
     val savedItemState: SavedItemStateReader get() = runtime.savedItemActions
 
+    fun availableStoriesToCache(): Int = runtime.availableStoriesToCache()
+
     fun consumeSearchFocusRequest(): Boolean = sessionState.consumeSearchFocusRequest()
 
     /** Starts retained state and all repository observation exactly once. */
@@ -199,7 +203,14 @@ class StoriesFeatureStore internal constructor(
                 publish()
             }
         }
-        jobs += scope.launch { storyCache.state.collect { publish() } }
+        jobs += scope.launch {
+            storyCache.state.collect { cache ->
+                if (!runtime.searching && runtime.currentType == StoryType.DOWNLOADS &&
+                    (cache.status == StoryCacheStatus.FINISHED || cache.status == StoryCacheStatus.PARTIAL)
+                ) runtime.showCachedStories()
+                publish()
+            }
+        }
         commentedStories?.let { commented ->
             jobs += scope.launch { commented.ids.collect { publish() } }
             // Signing in, out, or switching accounts rebinds the set. The first settled state
@@ -262,6 +273,7 @@ class StoriesFeatureStore internal constructor(
             }
             StoriesIntent.OpenSearch -> runtime.openSearch()
             StoriesIntent.CloseSearch -> runtime.closeSearch()
+            StoriesIntent.ClearSearch -> runtime.clearSearch()
             is StoriesIntent.Search -> runtime.submitSearch(intent.query)
             is StoriesIntent.SelectSearchOption ->
                 runtime.selectSearchOption(intent.kind, intent.index)

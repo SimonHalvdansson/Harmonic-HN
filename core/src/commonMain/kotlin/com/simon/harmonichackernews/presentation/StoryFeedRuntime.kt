@@ -49,11 +49,13 @@ class StoryFeedRuntime(
                     store.fail(StoryLoadFailure.GENERAL)
                     StoryFeedApplication(false, loadVisibleStories = false)
                 } else {
+                    val page = result.page
+                    val current = store.stories.associateBy(Story::id)
                     val stories = reconciledPlaceholders(
-                        existingStories = store.stories,
-                        itemIds = result.page.itemIds,
-                        commentIds = result.page.commentIds.toSet(),
-                        cachedStories = cachedStories,
+                        existingStories = store.stories.filterNot { it.id in page.storyHeaders },
+                        itemIds = page.itemIds,
+                        commentIds = page.commentIds.toSet(),
+                        cachedStories = cachedStories + page.hydrateHeaders(current),
                     )
                     store.replace(
                         stories,
@@ -108,7 +110,7 @@ class StoryFeedRuntime(
             hideRead = shouldHideReadStories(),
             hydrateCachedStory = hydrateCachedStory,
             shouldHideHydratedStory = shouldHideHydratedStory,
-            cachedStories = cachedStories,
+            cachedStories = cachedStories + page.hydrateHeaders(emptyMap()),
         )
         store.mutateStories { addAll(newStories) }
         val canLoadMore = !page.nextPageUrl.isNullOrEmpty()
@@ -130,6 +132,11 @@ class StoryFeedRuntime(
         store.finishLoadMore(canLoadMore = true)
         return true
     }
+
+    private fun HackerNewsListPage.hydrateHeaders(existing: Map<Int, Story>): Map<Int, Story> =
+        storyHeaders.mapValues { (id, header) ->
+            (existing[id] ?: Story().also { it.id = id }).also(header::applyTo)
+        }
 
     fun resetScrapedPagination(store: StoryListStore) {
         sessionState.scrapedFrontpageNextPageUrl = null

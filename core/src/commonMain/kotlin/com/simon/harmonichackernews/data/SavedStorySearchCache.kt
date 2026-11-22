@@ -89,19 +89,36 @@ internal data class SavedStorySearchMetadata(
     val isLink: Boolean,
     val pdfTitle: String?,
     val videoTitle: String?,
+    val rootStory: CommentMasterSnapshot? = null,
 ) {
-    fun toStory(read: Boolean): Story = Story().apply {
-        applySnapshot(story)
-        loaded = true
-        isRead = read
-        this.isLink = this@SavedStorySearchMetadata.isLink
-        this.pdfTitle = this@SavedStorySearchMetadata.pdfTitle
-        this.videoTitle = this@SavedStorySearchMetadata.videoTitle
+    fun toStory(read: Boolean): Story = Story().also { applyTo(it, read) }
+
+    fun applyTo(row: Story, read: Boolean) {
+        row.applySnapshot(story)
+        row.loaded = true
+        row.loadingFailed = false
+        row.isRead = read
+        row.isLink = isLink
+        row.pdfTitle = pdfTitle
+        row.videoTitle = videoTitle
+        rootStory?.let {
+            row.rootStoryId = it.id
+            row.rootStoryTitle = it.title
+            row.rootStoryUrl = it.url
+            row.rootStoryAuthor = it.author
+            row.rootStoryScore = it.score
+            row.rootStoryCreatedAtEpochSeconds = it.createdAtEpochSeconds
+            row.rootStoryDescendantCount = it.descendantCount
+            row.rootStoryLoaded = it.loaded
+        }
     }
 
     companion object {
         fun from(story: Story) = SavedStorySearchMetadata(
-            story.toSnapshot(), story.isLink, story.pdfTitle, story.videoTitle,
+            story.toSnapshot().let { snapshot ->
+                story.originalCreatedAtEpochSeconds?.let { snapshot.copy(createdAtEpochSeconds = it) } ?: snapshot
+            }, story.isLink, story.pdfTitle, story.videoTitle,
+            if (story.isComment && story.rootStoryId > 0) story.rootStorySnapshot() else null,
         )
     }
 }

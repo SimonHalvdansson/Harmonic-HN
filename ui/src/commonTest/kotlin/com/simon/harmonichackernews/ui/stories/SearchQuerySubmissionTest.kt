@@ -40,6 +40,14 @@ class SearchQuerySubmissionTest {
     }
 
     @Test
+    fun emptyImeCommitClearsSubmissionWithoutIssuingAnotherSearch() {
+        val submission = SearchQuerySubmission("kotlin")
+        submission.submit()
+        assertNull(submission.updateDraft(""))
+        assertNull(submission.updateDraft("new draft"))
+    }
+
+    @Test
     fun restoredDraftCanBeSubmittedWithoutTyping() {
         val submission = SearchQuerySubmission("")
         submission.synchronizeDraft("restored query")

@@ -26,5 +26,6 @@ internal val StoryType.menuIcon: DrawableResource
         StoryType.FAVORITES -> Res.drawable.ic_favorite
         StoryType.UPVOTED -> Res.drawable.ic_arrow_upward
         StoryType.HISTORY -> Res.drawable.ic_history
+        StoryType.DOWNLOADS -> Res.drawable.ic_file_download
         StoryType.UNKNOWN -> Res.drawable.ic_subject
     }

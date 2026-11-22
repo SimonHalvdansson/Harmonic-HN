@@ -24,7 +24,7 @@ class FrontpageSettingsTest {
                 )
                 assertEquals(
                     personal.filter { (!it.isUserItemList || hasAccount) && (!it.isBookmarks || bookmarksEnabled) } +
-                        StoryTypeMenuPolicy.baseFrontpages,
+                        StoryTypeMenuPolicy.baseFrontpages + StoryType.DOWNLOADS,
                     pages,
                 )
                 assertEquals(
@@ -99,11 +99,11 @@ class FrontpageSettingsTest {
         val expected = StoryTypeMenuPolicy.baseFrontpages + StoryType.CLASSIC + StoryType.UNSLOP
         val enabled = setOf("Classic", "unslop.news")
         assertEquals(
-            expected + listOf(StoryType.BOOKMARKS, StoryType.HISTORY),
+            expected + listOf(StoryType.BOOKMARKS, StoryType.HISTORY, StoryType.DOWNLOADS),
             StoryTypeMenuPolicy.availableTypes(enabled, hasAccount = false),
         )
         assertEquals(
-            expected + listOf(StoryType.BOOKMARKS, StoryType.FAVORITES, StoryType.HISTORY, StoryType.UPVOTED),
+            expected + listOf(StoryType.BOOKMARKS, StoryType.FAVORITES, StoryType.HISTORY, StoryType.UPVOTED, StoryType.DOWNLOADS),
             StoryTypeMenuPolicy.availableTypes(enabled, hasAccount = true),
         )
     }

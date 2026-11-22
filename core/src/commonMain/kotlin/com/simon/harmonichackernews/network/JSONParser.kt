@@ -321,6 +321,7 @@ class CachedStoryHeader internal constructor(
     private val preparedText: String?,
     private val descendants: Int,
 ) {
+    internal val articleUrl: String? get() = item.optString("url", "").takeIf(String::isNotEmpty)
     val topLevelCommentIds: List<Int> = item.optJSONArray("kids")?.let { ids ->
         List(ids.length()) { ids.getInt(it) }
     }.orEmpty()

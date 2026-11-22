@@ -106,6 +106,7 @@ data class PortableStoryListState(
     val showingCached: Boolean = false,
     val failure: StoryLoadFailure? = null,
     val revision: Long = 0,
+    val hasCompletedLoad: Boolean = false,
 )
 
 /**
@@ -155,6 +156,7 @@ class StoryListStore(
             canLoadMore = canLoadMore,
             showingCached = showingCached,
             failure = failure,
+            hasCompletedLoad = stories.isNotEmpty() || showingCached,
             loading = false,
             refreshing = false,
             loadMoreInProgress = false,
@@ -167,6 +169,8 @@ class StoryListStore(
         publish(
             loading = !refreshing,
             refreshing = refreshing,
+            hasCompletedLoad = false,
+            canLoadMore = !clearItems && state.value.canLoadMore,
             failure = null,
             showingCached = !clearItems && state.value.showingCached,
             loadedThroughIndex = if (clearItems) -1 else state.value.loadedThroughIndex,
@@ -196,6 +200,7 @@ class StoryListStore(
             canLoadMore = canLoadMore,
             showingCached = showingCached,
             failure = null,
+            hasCompletedLoad = true,
         )
     }
 
@@ -207,6 +212,7 @@ class StoryListStore(
             loadedThroughIndex = -1,
             loadMoreInProgress = false,
             canLoadMore = false,
+            hasCompletedLoad = false,
         )
     }
 
@@ -249,6 +255,24 @@ class StoryListStore(
 
     fun markRead(storyId: Int, read: Boolean): Boolean =
         updateStory(storyId) { isRead = read }
+
+    fun markRead(storyIds: Set<Int>) {
+        val updates = mutableMapOf<Int, StoryListItemSnapshot>()
+        stories.forEachIndexed { index, story ->
+            if (story.id in storyIds) {
+                story.isRead = true
+                updates[index] = story.toListItemSnapshot()
+            }
+        }
+        if (updates.isEmpty()) return
+        val current = state.value
+        val items = current.items as? StoryListItems
+        if (items == null || items.size != stories.size || updates.any { (i, row) -> items[i].id != row.id }) {
+            publish()
+        } else {
+            mutableState.value = current.copy(items = items.updated(updates), revision = current.revision + 1)
+        }
+    }
 
     fun mergeStoryContent(update: Story): Boolean = updateStory(update.id) {
         StoryRowMergePolicy.mergeSummaryFields(this, update)
@@ -418,6 +442,7 @@ class StoryListStore(
         canLoadMore: Boolean = state.value.canLoadMore,
         showingCached: Boolean = state.value.showingCached,
         failure: StoryLoadFailure? = state.value.failure,
+        hasCompletedLoad: Boolean = state.value.hasCompletedLoad,
         refreshItems: Boolean = true,
         changedStory: Story? = null,
     ) {
@@ -439,6 +464,7 @@ class StoryListStore(
             showingCached = showingCached,
             failure = failure,
             revision = revision,
+            hasCompletedLoad = hasCompletedLoad,
         )
         mutableState.value = nextState
     }
@@ -492,4 +518,7 @@ internal class StoryListItems private constructor(
         check(items[index].id == item.id)
         return StoryListItems(items.toMutableList().apply { this[index] = item }, idOrder)
     }
+
+    fun updated(updates: Map<Int, StoryListItemSnapshot>): StoryListItems =
+        StoryListItems(items.toMutableList().apply { updates.forEach { (i, item) -> this[i] = item } }, idOrder)
 }

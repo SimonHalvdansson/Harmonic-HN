@@ -267,6 +267,16 @@ class PreparedCommentThreadTest {
         assertEquals("new text", existing.expandedAnchorText)
     }
 
+    @Test fun manualDownloadUsesThePreparedRootUrlWithoutReadingTheRawThreadAgain() = runTest {
+        val files = RecordingFiles()
+        val service = StoryCacheService(StoryCacheRepository(files, InMemoryStoryCacheMetadataStore()),
+            ArticleSnapshotService(KtorHttpClient(client = { error("Offline") }), null), { 1_000L })
+        val withUrl = raw.replaceFirst("{", """{"url":"https://example.com/article",""")
+        assertEquals("https://example.com/article", service.cacheStory(42, withUrl))
+        assertNull(service.cacheStory(42, raw))
+        assertEquals(0, files.rawReads)
+    }
+
     @Test fun offlineRebuildAndWarmRestorationDoNotReadRawJsonAgain() = runTest {
         val files = RecordingFiles()
         val repository = StoryCacheRepository(files, InMemoryStoryCacheMetadataStore())

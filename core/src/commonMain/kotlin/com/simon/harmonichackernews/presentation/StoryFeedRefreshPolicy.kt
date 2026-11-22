@@ -9,6 +9,7 @@ enum class StoryFeedSource {
     BOOKMARKS,
     USER_ITEMS,
     HISTORY,
+    DOWNLOADS,
     FRONTPAGE_LINKS,
     SCRAPED_FRONTPAGE,
     UNSLOP_RSS,
@@ -20,7 +21,6 @@ data class StoryFeedRefreshPlan(
     val showRefreshIndicator: Boolean,
     val clearItems: Boolean,
     val loadCachedUserItems: Boolean,
-    val recordRefreshTime: Boolean,
 )
 
 /** Portable routing and freshness policy for story-feed refreshes. */
@@ -46,6 +46,7 @@ object StoryFeedRefreshPolicy {
             storyType.isBookmarks -> StoryFeedSource.BOOKMARKS
             storyType.isUserItemList -> StoryFeedSource.USER_ITEMS
             storyType.isHistory -> StoryFeedSource.HISTORY
+            storyType == StoryType.DOWNLOADS -> StoryFeedSource.DOWNLOADS
             storyType.isFrontpageLinkList -> StoryFeedSource.FRONTPAGE_LINKS
             storyType.isScrapedFrontpage -> StoryFeedSource.SCRAPED_FRONTPAGE
             storyType == StoryType.UNSLOP -> StoryFeedSource.UNSLOP_RSS
@@ -57,10 +58,6 @@ object StoryFeedRefreshPolicy {
             clearItems = showMainLoadingIndicator,
             loadCachedUserItems = source == StoryFeedSource.USER_ITEMS &&
                 (showMainLoadingIndicator || listIsEmpty),
-            recordRefreshTime = source !in setOf(
-                StoryFeedSource.SEARCH,
-                StoryFeedSource.ALGOLIA,
-            ),
         )
     }
 
@@ -88,12 +85,13 @@ object StoryFeedRefreshPolicy {
         searching: Boolean,
         storyType: StoryType,
     ): Boolean {
+        if (storyType == StoryType.DOWNLOADS && !searching) return false
         if (alwaysShow) return true
         val refreshableSource = !searching &&
             !storyType.isBookmarks &&
             !storyType.isUserItemList &&
             !storyType.isAlgolia
-        return refreshableSource && nowMillis - lastLoadedMillis > STALE_AFTER_MILLIS
+        return refreshableSource && lastLoadedMillis > 0L && nowMillis - lastLoadedMillis > STALE_AFTER_MILLIS
     }
 
     fun failureFor(error: Throwable): StoryLoadFailure = when {

@@ -8,7 +8,7 @@ object HiddenStoryPolicy {
         StoryType.TOP_STORIES, StoryType.NEW_STORIES, StoryType.BEST_STORIES,
         StoryType.LAST_24_HOURS, StoryType.LAST_48_HOURS, StoryType.LAST_WEEK,
         StoryType.ASK_HN, StoryType.SHOW_HN, StoryType.HN_JOBS,
-        StoryType.CLASSIC, StoryType.ACTIVE, StoryType.FRONT, StoryType.UNSLOP,
+        StoryType.CLASSIC, StoryType.ACTIVE, StoryType.FRONT, StoryType.UNSLOP, StoryType.DOWNLOADS,
     )
 
     fun supports(type: StoryType): Boolean = type in supportedTypes

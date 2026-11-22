@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.data
 
+import com.simon.harmonichackernews.cache.StoryDownloadPosition
+
 import com.simon.harmonichackernews.network.AlgoliaStorySummary
 import com.simon.harmonichackernews.network.CachedStoryHeader
 import com.simon.harmonichackernews.network.JSONParser
@@ -143,6 +145,9 @@ class InMemoryStoryCacheMetadataStore : StoryCacheMetadataStore {
 }
 
 object StoryCacheKeys {
+    private const val DOWNLOAD_POSITION = "story_download_position_"
+    fun downloadPositionKey(storyId: Int): String = DOWNLOAD_POSITION + storyId
+    fun isDownloadPositionKey(key: String): Boolean = key.startsWith(DOWNLOAD_POSITION)
     const val INDEX = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_STORIES_STRINGS"
     const val COMMENTS_VIEWED = "com.simon.harmonichackernews.KEY_CACHED_COMMENTS_VIEWED"
     const val ARTICLE_URL = "com.simon.harmonichackernews.KEY_SHARED_PREFERENCES_CACHED_ARTICLE_URL"
@@ -196,6 +201,7 @@ class StoryCacheRepository(
         payload: String?,
         cachedAtMillis: Long,
         parsedSummary: AlgoliaStorySummary? = null,
+        download: StoryDownloadPosition? = null,
     ): Boolean {
         if (storyId <= 0 || payload.isNullOrEmpty() || payload == JSONParser.ALGOLIA_ERROR_STRING) {
             return false
@@ -231,7 +237,11 @@ class StoryCacheRepository(
         )
         metadata.update {
             putStringSet(StoryCacheKeys.INDEX, update.encodedEntries)
+            if (download != null) {
+                putString(StoryCacheKeys.downloadPositionKey(storyId), "${download.startedAtMillis}:${download.index}")
+            }
             update.evictedStoryIds.forEach { evictedStoryId ->
+                remove(StoryCacheKeys.downloadPositionKey(evictedStoryId))
                 remove(StoryCacheKeys.commentsViewedKey(evictedStoryId))
                 remove(StoryCacheKeys.articleUrlKey(evictedStoryId))
                 remove(StoryCacheKeys.articleCharsetKey(evictedStoryId))
@@ -311,8 +321,25 @@ class StoryCacheRepository(
         return JSONParser.updateStoryWithCachedStorySummary(story, summary)
     }
 
-    fun recentStories(nowMillis: Long): List<Story> = recentEntries(nowMillis).mapNotNull { entry ->
-        Story().apply { id = entry.storyId }.takeIf { hydrateStory(it) && !it.isComment }
+    fun recentStories(nowMillis: Long): List<Story> {
+        val recent = recentEntries(nowMillis)
+        val explicit = recent.mapNotNull { entry ->
+            val stored = metadata.getString(StoryCacheKeys.downloadPositionKey(entry.storyId)) ?: return@mapNotNull null
+            val batch = stored.substringBefore(':').toLongOrNull() ?: return@mapNotNull null
+            val index = stored.substringAfter(':').toIntOrNull() ?: return@mapNotNull null
+            if (batch < nowMillis - StoryCacheIndex.DEFAULT_MAX_AGE_MILLIS) return@mapNotNull null
+            entry.storyId to StoryDownloadPosition(batch, index)
+        }.toMap()
+        return recent.sortedWith(
+            compareByDescending<StoryCacheEntry> { explicit[it.storyId]?.startedAtMillis }
+                .thenBy { explicit[it.storyId]?.index }
+                .thenByDescending { it.cachedAtMillis },
+        ).mapNotNull { entry ->
+            Story().apply {
+                id = entry.storyId
+                cachedAtMillis = explicit[id]?.startedAtMillis ?: entry.cachedAtMillis
+            }.takeIf { hydrateStory(it) && !it.isComment }
+        }
     }
 
     fun hasRecentStories(nowMillis: Long): Boolean {
@@ -362,6 +389,7 @@ class StoryCacheRepository(
         val updatedIndex = StoryCacheIndex.remove(metadata.getStringSet(StoryCacheKeys.INDEX), storyId)
         metadata.update {
             putStringSet(StoryCacheKeys.INDEX, updatedIndex)
+            remove(StoryCacheKeys.downloadPositionKey(storyId))
             remove(StoryCacheKeys.commentsViewedKey(storyId))
             remove(StoryCacheKeys.articleUrlKey(storyId))
             remove(StoryCacheKeys.articleCharsetKey(storyId))
@@ -380,6 +408,7 @@ class StoryCacheRepository(
         files.clear(StoryCacheKeys.ARTICLE_NAMESPACE)
         val cacheMetadataKeys = metadata.keys().filter { key ->
             if (key == StoryCacheKeys.INDEX ||
+                StoryCacheKeys.isDownloadPositionKey(key) ||
                 key.startsWith(StoryCacheKeys.COMMENTS_VIEWED) ||
                 key.startsWith(StoryCacheKeys.ARTICLE_URL) ||
                 key.startsWith(StoryCacheKeys.ARTICLE_CHARSET) ||

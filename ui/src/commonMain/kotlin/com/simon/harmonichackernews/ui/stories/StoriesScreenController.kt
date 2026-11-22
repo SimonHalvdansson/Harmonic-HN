@@ -291,6 +291,7 @@ class StoriesScreenController private constructor(
     fun updateSearchDraft(value: String) {
         interactionStore.updateSearchDraft(value)
         syncInteractionState()
+        if (value.isEmpty() && searching) listener.onClearSearch()
     }
 
     fun updateHeaderMenuVisibility(visible: Boolean) {
@@ -344,9 +345,11 @@ class StoriesScreenController private constructor(
         if (headerMenuVisible) headerMenuDismissRequestVersion++
     }
 
+    fun availableStoriesToCache(): Int = listener.availableStoriesToCache()
+
     fun cacheStories(storyCount: Int, downloadWebViewContents: Boolean) {
         listener.onCacheStoriesConfirmed(
-            StoryCachePreferences.sanitizeCount(storyCount),
+            storyCount.coerceIn(0, StoryCachePreferences.MAX_COUNT),
             downloadWebViewContents,
         )
     }
@@ -693,6 +696,7 @@ class StoriesScreenController private constructor(
         fun consumeSearchFocusRequest(): Boolean = true
         fun onCloseSearch()
         fun onSearch(query: String)
+        fun onClearSearch() = Unit
         fun onSearchOption(kind: StorySearchOption, index: Int)
         fun onRefresh(showMainLoadingIndicator: Boolean = false)
         fun onShowCached()
@@ -703,6 +707,7 @@ class StoriesScreenController private constructor(
         fun onPickFrontDate()
         fun onFrontDateSelected(day: Long)
         fun onMoreAction(action: StoriesMenuAction)
+        fun availableStoriesToCache(): Int = StoryCachePreferences.MAX_COUNT
         fun onCacheStoriesConfirmed(storyCount: Int, downloadWebViewContents: Boolean)
         fun onHidePost(story: StoryListItemSnapshot) = Unit
         fun onLinkClick(story: StoryListItemSnapshot)

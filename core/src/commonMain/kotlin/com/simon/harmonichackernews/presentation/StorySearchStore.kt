@@ -130,10 +130,12 @@ class StorySearchStore(
     fun loadTopStories(
         storyType: StoryType,
         startTime: Int = controller.getCurrentTopStoriesStartTime(storyType),
+        onRefreshSucceeded: () -> Unit = {},
     ) {
         request = Request.TopStories(
             startTime,
             controller.buildTopStoriesUrl(startTime, StorySearchController.ALGOLIA_PAGE_SIZE),
+            onRefreshSucceeded,
         )
         resetPagination()
         execute(loadMore = false)
@@ -252,6 +254,9 @@ class StorySearchStore(
             }
             if (requestGeneration != generation) return@launch
             loadJob = null
+            if (activeRequest is Request.TopStories && !loadMore && result.failure == null) {
+                activeRequest.onRefreshSucceeded()
+            }
             result.fetchedStories?.let { fetchedStories = it }
             publish {
                 copy(
@@ -448,7 +453,11 @@ class StorySearchStore(
             override val topStoriesStartTime = 0
         }
 
-        data class TopStories(val startTime: Int, override val url: String) : Request() {
+        data class TopStories(
+            val startTime: Int,
+            override val url: String,
+            val onRefreshSucceeded: () -> Unit = {},
+        ) : Request() {
             override val mode = StorySearchMode.TOP_STORIES
             override val query = ""
             override val topStoriesStartTime = startTime

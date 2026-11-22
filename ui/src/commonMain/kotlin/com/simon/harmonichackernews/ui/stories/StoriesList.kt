@@ -86,6 +86,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -236,6 +240,23 @@ internal fun StoriesList(
             }
         }
     }
+    val revealThreshold = with(density) { 24.dp.toPx() }
+    val peek = remember(listState, searchMode, controller.presentation.selectedTypeIndex, revealThreshold) {
+        FeedControlsReveal(revealThreshold)
+    }
+    val currentCollapse = rememberUpdatedState { headerCollapsePx }
+    val peekScroll = remember(peek, headerHeight) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && !searchMode) {
+                    val collapse = currentCollapse.value()
+                    peek.onScroll(consumed.y, atTop = !listState.canScrollBackward,
+                        headerHidden = collapse > 0 && collapse >= headerHeight.height.intValue)
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     val storyIds = if (settings.markScrolledPostsRead) {
         remember(stories) { stories.map { it.id } }
@@ -308,9 +329,9 @@ internal fun StoriesList(
                     showFailureStatus = !centerFailure,
                     showWelcomeHint = showWelcomeHint,
                     onDismissWelcomeHint = onDismissWelcomeHint,
-                    modifier = Modifier
-                        .zIndex(1f)
-                        .graphicsLayer { translationY = -headerCollapsePx.toFloat() },
+                    modifier = Modifier.zIndex(1f),
+                    collapsePx = { headerCollapsePx },
+                    revealControls = !searchMode && peek.visible && listState.canScrollBackward,
                 )
             },
             foreground = if (centerFailure) {
@@ -331,6 +352,7 @@ internal fun StoriesList(
                     key = { story -> story.id },
                     contentType = { story -> if (story.isComment) "comment" else "story" },
                     modifier = Modifier
+                        .nestedScroll(peekScroll)
                         .statusBarScrollToTop(
                             enabled = searchMode == controller.searching && !controller.isStoryPreviewShowing(),
                         ) { listState.animateScrollToItem(0) }

@@ -216,14 +216,23 @@ class HistoryLedger(
 
     fun contains(id: Int): Boolean = id in historyIds
 
-    fun record(id: Int, createdAtMillis: Long): Boolean {
+    fun record(id: Int, createdAtMillis: Long): Boolean =
+        append(id, createdAtMillis).also { if (it) changeVersion++ }
+
+    fun recordAll(ids: List<Int>, createdAtMillis: Long): Boolean {
+        var changed = false
+        for (id in ids) if (append(id, createdAtMillis)) changed = true
+        if (changed) changeVersion++
+        return changed
+    }
+
+    private fun append(id: Int, createdAtMillis: Long): Boolean {
         if (!historyIds.add(id)) return false
         histories += History(id, createdAtMillis)
         if (histories.size > maximumEntries) {
             val oldestIndex = histories.indices.minBy { histories[it].created }
             historyIds.remove(histories.removeAt(oldestIndex).id)
         }
-        changeVersion++
         return true
     }
 

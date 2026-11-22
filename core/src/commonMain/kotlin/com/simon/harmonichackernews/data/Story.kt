@@ -9,6 +9,9 @@ class Story : LinkPreviewState {
     var id: Int = 0
     var score: Int = 0
     var createdAtEpochSeconds: Int = 0
+    // History displays the visit time; retain the publication time for shared saved-item metadata.
+    internal var originalCreatedAtEpochSeconds: Int? = null
+    var cachedAtMillis: Long? = null
     var title: String? = null
     var pdfTitle: String? = null
     var videoTitle: String? = null

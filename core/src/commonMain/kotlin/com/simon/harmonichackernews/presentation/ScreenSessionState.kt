@@ -41,6 +41,7 @@ class StoriesSessionState {
     }
 
     var lastSearch: String = ""
+    internal var storyCacheSelection: List<Int>? = null
     var lastLoaded: Long = 0
     // Retain the cause and cooldown across host recreation, without exposing details in the UI.
     internal var feedLoadError: Throwable? = null

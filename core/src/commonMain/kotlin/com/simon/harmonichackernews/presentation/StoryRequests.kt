@@ -104,6 +104,10 @@ class StoryRequests(
     private val mutableEffects = MutableSharedFlow<StoryRequestEvent>(extraBufferCapacity = 16)
     val effects: SharedFlow<StoryRequestEvent> = mutableEffects.asSharedFlow()
 
+    internal val hasSavedStoryCache: Boolean get() = savedSearchCache != null
+
+    internal suspend fun loadSavedMetadata(ids: List<Int>) = savedSearchCache?.load(ids).orEmpty()
+
     fun rememberSavedStories(stories: List<Story>) {
         val cache = savedSearchCache ?: return
         val metadata = stories.mapNotNull { story ->
@@ -118,6 +122,14 @@ class StoryRequests(
     fun shouldHideStory(story: Story, type: StoryType): Boolean =
         storyVisibilityPolicy.shouldHide(story, type) ||
             sessionState.newStoriesFilter.shouldHide(story, type, sessionState.searching)
+
+    fun canCacheUnloadedStories(type: StoryType): Boolean {
+        val filters = storyVisibilityPolicy.config
+        return !type.usesCommentRows() && !type.isHistory && !sessionState.searching &&
+            !(type == StoryType.NEW_STORIES && sessionState.newStoriesFilter.active) &&
+            filters.filteredUsers.isEmpty() && filters.titleRules.isEmpty() &&
+            filters.domainRules.isEmpty() && (!filters.hideJobs || type == StoryType.HN_JOBS)
+    }
     private var userItemsLoadJob: Job? = null
     private val storyRowLoader = StoryRowLoadOrchestrator(
         scope = scope,
@@ -138,8 +150,8 @@ class StoryRequests(
         storyRowLoader.load(story, preserveTime, generation)
     }
 
-    fun invalidateLoadedStoryRows(stories: List<Story>) =
-        storyRowLoader.invalidateLoadedStories(stories.filter(Story::loaded).map(Story::id))
+    fun invalidateLoadedStoryRows(stories: List<Story>, freshIds: Set<Int> = emptySet()) =
+        storyRowLoader.invalidateLoadedStories(stories.mapNotNull { if (it.loaded && it.id !in freshIds) it.id else null })
 
     fun storyRowNeedsRefresh(storyId: Int): Boolean = storyRowLoader.needsRefresh(storyId)
 

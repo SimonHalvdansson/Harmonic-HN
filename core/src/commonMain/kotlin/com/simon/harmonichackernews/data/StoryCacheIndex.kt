@@ -1,7 +1,5 @@
 package com.simon.harmonichackernews.data
 
-import com.simon.harmonichackernews.serialization.JsonObject
-
 data class StoryCacheIndexUpdate(
     val encodedEntries: Set<String>,
     val evictedStoryIds: List<Int>,
@@ -10,7 +8,7 @@ data class StoryCacheIndexUpdate(
 data class StoryCacheEntry(val storyId: Int, val cachedAtMillis: Long)
 
 object StoryCacheIndex {
-    const val DEFAULT_MAX_AGE_MILLIS: Long = 24L * 60L * 60L * 1_000L
+    const val DEFAULT_MAX_AGE_MILLIS: Long = 7L * 24L * 60L * 60L * 1_000L
 
     private val evictionOrder = Comparator<StoryCacheEntry> { first, second ->
         val timeOrder = first.cachedAtMillis.compareTo(second.cachedAtMillis)
@@ -132,15 +130,5 @@ object CacheFileNamePolicy {
         val contentEnd = value.length - suffix.length
         if (contentEnd < prefix.length) return null
         return value.substring(prefix.length, contentEnd).toIntOrNull()?.takeIf { it > 0 }
-    }
-}
-
-object StoryCachePayloadParser {
-    fun externalArticleUrl(storyJson: String): String? {
-        val value = JsonObject(storyJson)
-        if (!value.has("url") || value.isNull("url")) return null
-        return value.optString("url", "").takeIf {
-            it.startsWith("http://") || it.startsWith("https://")
-        }
     }
 }

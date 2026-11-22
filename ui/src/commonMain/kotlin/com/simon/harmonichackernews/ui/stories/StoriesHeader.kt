@@ -87,6 +87,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -168,6 +170,25 @@ internal class StoriesHeaderMenus {
     var moreExpanded by mutableStateOf(false)
 }
 
+internal class FeedControlsReveal(private val threshold: Float) {
+    private var travel = 0f
+    var visible by mutableStateOf(false)
+        private set
+
+    fun onScroll(delta: Float, atTop: Boolean, headerHidden: Boolean) {
+        if (atTop) {
+            travel = 0f
+            visible = false
+            return
+        }
+        if (delta == 0f) return
+        if (delta * travel < 0f) travel = 0f
+        travel = (travel + delta).coerceIn(-threshold, threshold)
+        if (travel <= -threshold) visible = false
+        if (travel >= threshold && headerHidden) visible = true
+    }
+}
+
 @Composable
 internal fun rememberStoriesHeaderMenus(controller: StoriesScreenController): StoriesHeaderMenus {
     val menus = remember(controller) { StoriesHeaderMenus() }
@@ -203,6 +224,59 @@ internal fun StoriesHeader(
     modifier: Modifier = Modifier,
     showWelcomeHint: Boolean = false,
     onDismissWelcomeHint: () -> Unit = {},
+    collapsePx: () -> Int,
+    revealControls: Boolean,
+) {
+    val settings = controller.displaySettings ?: return
+    val density = LocalDensity.current
+    val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val startInset = with(density) { controller.presentation.contentInsetStartPx.toDp() }
+    val topSpacing = frontpageHeaderTopSpacing(settings.compactHeader)
+    var controlsHeight by remember {
+        mutableStateOf(if (settings.headerPill == StoriesHeaderPill.OFF) 56.dp else 68.dp)
+    }
+    val reveal = animateFloatAsState(if (revealControls) 1f else 0f, tween(150), label = "Feed controls")
+    Box(modifier.fillMaxWidth()) {
+        StoriesHeaderContent(
+            controller, onTypeSelected, searchMode, tapToUpdateExitProgress, suppressLastUpdated,
+            filterColors, showFailureStatus, controlsHeight,
+            Modifier.graphicsLayer { translationY = -collapsePx().toFloat() },
+        )
+        if (!searchMode) {
+            // Move the existing controls independently of the status and filter rows. Their menus
+            // keep a single anchor as the floating controls meet the regular header at the top.
+            Box(
+                Modifier.fillMaxWidth().graphicsLayer {
+                    val natural = -collapsePx().toFloat()
+                    val hidden = natural.coerceAtLeast(-size.height)
+                    translationY = hidden + ((4.dp - topSpacing).toPx() - hidden) * reveal.value
+                }.background(MaterialTheme.colorScheme.pageBackground)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                    .padding(top = topInset + topSpacing),
+            ) {
+                MainHeader(
+                    controller, onTypeSelected, showRefreshMenuItem, showWelcomeHint, onDismissWelcomeHint,
+                    modifier = Modifier.padding(
+                        start = startInset + storiesHeaderSideInset(settings), end = storiesHeaderSideInset(settings),
+                    ).onSizeChanged { controlsHeight = with(density) { it.height.toDp() } },
+                    forceDropdown = revealControls,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoriesHeaderContent(
+    controller: StoriesScreenController,
+    onTypeSelected: (Int) -> Unit,
+    searchMode: Boolean,
+    tapToUpdateExitProgress: () -> Float,
+    suppressLastUpdated: Boolean,
+    filterColors: HarmonicFilterButtonColors,
+    showFailureStatus: Boolean,
+    controlsHeight: Dp,
+    modifier: Modifier,
 ) {
     val density = LocalDensity.current
     val topInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -228,17 +302,7 @@ internal fun StoriesHeader(
             if (searchMode) {
                 SearchHeader(controller, sideStart, sideEnd)
             } else {
-                MainHeader(
-                    controller = controller,
-                    onTypeSelected = onTypeSelected,
-                    showRefreshMenuItem = showRefreshMenuItem,
-                    showWelcomeHint = showWelcomeHint,
-                    onDismissWelcomeHint = onDismissWelcomeHint,
-                    modifier = Modifier.padding(
-                        start = startInset + storiesHeaderSideInset(settings),
-                        end = storiesHeaderSideInset(settings),
-                    ),
-                )
+                Spacer(Modifier.height(controlsHeight))
                 if (controller.canFilterNewStories && controller.newStoriesFilter.active) {
                     NewStoriesFilterIndicator(
                         filter = controller.newStoriesFilter,
@@ -481,13 +545,17 @@ private fun MainHeader(
     showWelcomeHint: Boolean,
     onDismissWelcomeHint: () -> Unit,
     modifier: Modifier = Modifier,
+    forceDropdown: Boolean = false,
 ) {
     val menus = LocalStoriesHeaderMenus.current ?: rememberStoriesHeaderMenus(controller)
     val settings = controller.displaySettings ?: return
     FrontpageHeaderControls(
         settings = settings,
-        title = if (controller.presentation.showingCached) "Cached stories" else
-            controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex) ?: "Stories",
+        title = controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex)
+            .let { selected ->
+                if (controller.presentation.showingCached && selected != StoryType.DOWNLOADS.label) "Cached stories"
+                else selected ?: "Stories"
+            },
         typeLabels = controller.presentation.typeLabels,
         selectedTypeIndex = controller.presentation.selectedTypeIndex,
         menus = menus,
@@ -497,6 +565,7 @@ private fun MainHeader(
         onSearch = controller.listener::onOpenSearch,
         onRefresh = controller::refresh,
         modifier = modifier,
+        forceDropdown = forceDropdown,
         moreMenu = { showRefresh, showSearch ->
             StoriesMoreMenuControl(
                 controller = controller,
@@ -524,13 +593,14 @@ internal fun FrontpageHeaderControls(
     onSearch: () -> Unit = {},
     onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
+    forceDropdown: Boolean = false,
     moreMenu: @Composable (showRefresh: Boolean, showSearch: Boolean) -> Unit,
 ) {
     DisposableEffect(menus) {
         onDispose { menus.typesExpanded = false }
     }
     val typography = rememberContentTypography(settings.font, settings.storyTextSize)
-    val useDropdown = settings.listSelector == StoryListSelector.DROPDOWN
+    val useDropdown = forceDropdown || settings.listSelector == StoryListSelector.DROPDOWN
     LaunchedEffect(useDropdown) {
         if (!useDropdown) menus.typesExpanded = false
     }
@@ -944,12 +1014,30 @@ internal fun HeaderStatus(
     showFailure: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
-    if (!searchMode && controller.canFilterNewStories && controller.newStoriesFilter.active &&
-        controller.mainStories.isEmpty() && !controller.presentation.loading && !controller.presentation.loadingFailed
-    ) {
+    if (!searchMode && controller.presentation.showEmptyFeed) {
+        val filtered = controller.canFilterNewStories && controller.newStoriesFilter.active
+        val downloads = controller.presentation.isDownloads
         Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 24.dp)) {
-            Text("No stories match these filters", color = colors.onSurface, fontFamily = AppUiFontFamily)
-            Text("Try lower minimums or clear the filters.", color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily)
+            Text(
+                when {
+                    downloads -> "No downloaded stories to show"
+                    filtered -> "No stories match these filters"
+                    else -> "No stories to show"
+                },
+                color = colors.onSurface, fontFamily = AppUiFontFamily,
+            )
+            if (downloads || filtered) {
+                Text(
+                    if (downloads) "Use Cache stories on a feed. Downloaded and recently cached discussions appear here for seven days."
+                    else "Try lower minimums or clear the filters.",
+                    color = colors.onSurfaceVariant, fontFamily = AppUiFontFamily,
+                )
+            }
+            if (filtered) {
+                androidx.compose.material3.TextButton(onClick = { controller.applyNewStoriesFilter(NewStoriesFilter()) }) {
+                    Text("Clear filters")
+                }
+            }
         }
     }
     StoryListStatus(

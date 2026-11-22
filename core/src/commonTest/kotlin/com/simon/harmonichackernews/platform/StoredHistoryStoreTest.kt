@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.platform
 
 import com.simon.harmonichackernews.settings.TestKeyValueStore
+import com.simon.harmonichackernews.settings.KeyValueStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
@@ -15,6 +16,32 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoredHistoryStoreTest {
+    @Test
+    fun scrollingPersistsAndPublishesEachBatchOnce() = runTest {
+        val values = TestKeyValueStore()
+        var writes = 0
+        val store = object : KeyValueStore by values {
+            override fun putString(key: String, value: String?) {
+                writes++
+                values.putString(key, value)
+            }
+        }
+        val history = StoredHistoryStore(store, storageDispatcher = StandardTestDispatcher(testScheduler))
+        try {
+            runCurrent()
+            val initial = history.changeVersion
+            history.recordHistories(listOf(1, 2, 1, 3), 500)
+            history.recordHistories(listOf(3, 2), 600)
+            assertEquals(1, writes)
+            assertEquals(initial + 1, history.changeVersion)
+            assertEquals(listOf(1, 2, 3), history.load().map { it.id })
+            assertTrue(history.load().all { it.created == 500L })
+            assertEquals("1q500-2q500-3q500", values.getString(StoredHistoryKeys.HISTORIES))
+        } finally {
+            history.close()
+        }
+    }
+
     @Test
     fun membershipTracksInitializationEvictionRemovalAndClearAtomically() = runTest {
         val history = StoredHistoryStore(

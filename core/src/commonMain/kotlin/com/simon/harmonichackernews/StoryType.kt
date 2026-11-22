@@ -26,7 +26,8 @@ enum class StoryType(
     FAVORITES("Favorites"),
     UPVOTED("Upvoted"),
     HISTORY("History"),
-    UNKNOWN("");
+    UNKNOWN(""),
+    DOWNLOADS("Downloads");
 
     val isAlgolia: Boolean
         get() = this == LAST_24_HOURS || this == LAST_48_HOURS || this == LAST_WEEK
@@ -99,6 +100,7 @@ object StoryTypeMenuPolicy {
         StoryType.FAVORITES,
         StoryType.HISTORY,
         StoryType.UPVOTED,
+        StoryType.DOWNLOADS,
     )
 
     val baseFrontpages = listOf(

@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.presentation
 
 import com.simon.harmonichackernews.StorySearchSource
+import com.simon.harmonichackernews.cache.StoryCacheRequest
 import com.simon.harmonichackernews.network.AlgoliaSearchPage
 import com.simon.harmonichackernews.StoryType
 import com.simon.harmonichackernews.data.Comment
@@ -9,6 +10,11 @@ import com.simon.harmonichackernews.data.SavedItemsRepository
 import com.simon.harmonichackernews.data.SavedItemSource
 import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.History
+import com.simon.harmonichackernews.data.InMemoryStoryCacheFileStore
+import com.simon.harmonichackernews.data.SavedStorySearchCache
+import com.simon.harmonichackernews.data.SavedStorySearchMetadata
+import com.simon.harmonichackernews.data.TimestampedItem
+import com.simon.harmonichackernews.network.HackerNewsWebParser
 import com.simon.harmonichackernews.platform.HistoryStoreSnapshot
 import com.simon.harmonichackernews.platform.HackerNewsAccount
 import com.simon.harmonichackernews.platform.HackerNewsAccountState
@@ -56,6 +62,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -64,6 +71,101 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoryRequestsTest {
+    @Test
+    fun savedListsShowPersistedTitlesOfflineAndRefreshThemOnline() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        saved.saveItems(SavedItemSource.BOOKMARKS, listOf(TimestampedItem(7, 1_000L)))
+        val history = MemoryHistoryStore().apply { record(7, 8_000L) }
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val cache = SavedStorySearchCache(InMemoryStoryCacheFileStore(), dispatcher)
+        val original = Story("Saved title", 7, true, true).apply { createdAtEpochSeconds = 5 }
+        cache.store(listOf(SavedStorySearchMetadata.from(original)))
+        val requests = mutableListOf<Int>()
+        val response = CompletableDeferred<HackerNewsItemDto>()
+        val api = object : HackerNewsApi by UnusedHackerNewsApi {
+            override suspend fun getItem(id: Int): HackerNewsItemDto {
+                requests += id
+                return response.await()
+            }
+        }
+        var connected = false
+        val connection = object : ConnectivityService {
+            override fun isOnline() = connected
+            override fun isUnmetered() = connected
+        }
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, api = api, savedSearchCache = cache),
+            dispatcher, history = history, connectivity = connection)
+        for (type in listOf(StoryType.BOOKMARKS, StoryType.HISTORY)) {
+            runtime.selectType(StoryListTarget.MAIN, type)
+            runtime.refresh(false)
+            runCurrent()
+            val row = runtime.mainStories.single()
+            assertEquals("Saved title", row.title)
+            assertTrue(row.isRead)
+            assertEquals(if (type.isHistory) 8 else 5, row.createdAtEpochSeconds)
+        }
+        assertTrue(requests.isEmpty())
+        connected = true
+        runtime.selectType(StoryListTarget.MAIN, StoryType.BOOKMARKS)
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals("Saved title", runtime.mainStories.single().title)
+        assertEquals(listOf(7), requests)
+        response.complete(HackerNewsItemDto(id = 7, by = "author", title = "Updated title", time = 3))
+        runCurrent()
+        assertEquals("Updated title", runtime.mainStories.single().title)
+        runtime.selectType(StoryListTarget.MAIN, StoryType.HISTORY)
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(8, runtime.mainStories.single().createdAtEpochSeconds)
+        connected = false
+        runtime.selectType(StoryListTarget.MAIN, StoryType.BOOKMARKS)
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(3, runtime.mainStories.single().createdAtEpochSeconds)
+    }
+
+    @Test
+    fun scrapedListingHydratesArticleRowsAndFetchesOnlyMissingDetails() = runTest {
+        val html = """<table><tr class="athing" id="42"><td><span class="titleline">
+            <a href="https://example.org/file.pdf">Paper &amp; notes [pdf]</a></span></td></tr>
+            <tr><td class="subtext"><span class="score" id="score_42">12 points</span>
+            by <a class="hnuser">hnreader</a> <span class="age" title="2026-11-01T08:00:00 1793516400"></span>
+            <a href="item?id=42">3&nbsp;comments</a></td></tr>
+            <tr class="athing" id="43"><td><span class="titleline"><a href="item?id=43">Ask HN</a></span></td></tr>
+            </table>"""
+        val page = HackerNewsWebParser.parseStoryListPage(html, false)
+        assertEquals(setOf(42), page.storyHeaders.keys)
+        assertEquals(0, HackerNewsWebParser.parseStoryListPage(html.replace("3&nbsp;comments", "discuss"), false)
+            .storyHeaders.getValue(42).descendants)
+        val requested = mutableListOf<Int>()
+        val api = object : HackerNewsApi by UnusedHackerNewsApi {
+            override suspend fun getItem(id: Int): HackerNewsItemDto {
+                requested += id
+                return HackerNewsItemDto(id = id, by = "author", title = "Ask HN", text = "Full body")
+            }
+        }
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val runtime = cacheRuntime(backgroundScope, session, saved,
+            storyRequests(session, saved, backgroundScope, RecordingFeedLoader(StoryFeedResult.Scraped(page)), api),
+            StandardTestDispatcher(testScheduler))
+        runtime.selectType(StoryListTarget.MAIN, StoryType.CLASSIC)
+        runtime.refresh(false)
+        runCurrent()
+        val first = runtime.mainStories.first()
+        assertEquals("Paper & notes [pdf]", first.title)
+        assertEquals("Paper & notes", first.pdfTitle)
+        assertEquals("hnreader", first.by)
+        assertEquals(12, first.score)
+        assertEquals(3, first.descendants)
+        assertEquals(1793516400, first.createdAtEpochSeconds)
+        assertEquals("Full body", runtime.mainStories.last().text)
+        assertEquals(listOf(43), requested)
+    }
+
     @Test
     fun openingSearchDefaultsToTheCurrentTabAndResetsPreviousSource() = runTest {
         val session = StoriesSessionState()
@@ -1432,6 +1534,108 @@ class StoryRequestsTest {
             """{"id":$id,"title":"$title","author":"fixture"$extra}""", id,
         )
 
+    @Test
+    fun cacheConfirmationUsesTheCapturedEligibleRankingEvenAfterTheFeedChanges() = runTest {
+        val session = StoriesSessionState().apply { mainStoryType = StoryType.ASK_HN }
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val downloads = mutableListOf<StoryCacheRequest>()
+        val runtime = cacheRuntime(backgroundScope, session, saved, storyRequests(session, saved, backgroundScope),
+            QueuedCacheDispatcher(), startStoryCache = { downloads += it })
+        runtime.mainStore.replace(listOf(
+            Story("Ask HN", 21, true, false),
+            Story("Comment", 22, true, false).apply { isComment = true },
+            Story("Another Ask", 15, true, false),
+        ))
+        runtime.handleMenuAction(StoriesMenuAction.CACHE)
+        assertEquals(2, runtime.availableStoriesToCache())
+        runtime.mainStore.replace(listOf(Story("New ranking", 17, true, false)))
+        runtime.requestStoryCache(5, true)
+        assertEquals(StoryCacheRequest(2, true, listOf(21, 15)), downloads.single())
+    }
+
+    @Test
+    fun downloadsApplyCurrentHistoryAndContentFiltersWithoutRequestingANetworkFeed() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val feed = RecordingFeedLoader(StoryFeedResult.ItemIds(emptyList()))
+        val history = MemoryHistoryStore().apply { record(2, 1_000L) }
+        val prefs = MemoryKeyValueStore()
+        val settings = StoredUserSettings(prefs, emptyFlow())
+        val filters = ContentFilters(words = listOf("blocked"))
+        val stories = listOf(Story("Allowed", 2, true, false), Story("Blocked", 1, true, false),
+            Story("Unread", 3, true, false))
+        val runtime = cacheRuntime(backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed),
+            StandardTestDispatcher(testScheduler), cached = { stories }, history = history, settings = settings)
+        runtime.updateAvailableStoryTypes(emptySet(), hasAccount = false)
+        runtime.configure(settings, filters)
+        runtime.selectTypeAndRefresh(StoryType.DOWNLOADS)
+        runCurrent()
+        assertTrue(runtime.mainStore.state.value.showingCached)
+        assertEquals(listOf(2, 3), runtime.mainStories.map(Story::id))
+        assertTrue(runtime.mainStories.first().isRead)
+        prefs.putBoolean(UserPreferenceKeys.HIDE_CLICKED, true)
+        runtime.configure(settings, filters)
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(listOf(3), runtime.mainStories.map(Story::id))
+        assertTrue(feed.requests.isEmpty())
+    }
+
+    @Test
+    fun freshnessTracksOnlySuccessfulLoadsOfTheSelectedFeed() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        val feed = RecoveringFeedLoader()
+        var now = 5_000L
+        val runtime = cacheRuntime(backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, feed),
+            StandardTestDispatcher(testScheduler), nowMillis = { now })
+        runtime.updateAvailableStoryTypes(emptySet(), hasAccount = false)
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(0L, session.lastLoaded)
+        feed.error = null
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(5_000L, session.lastLoaded)
+        now += StoryFeedRefreshPolicy.STALE_AFTER_MILLIS + 1L
+        feed.error = IOException("Offline")
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(5_000L, runtime.lastUpdatedMillisForHeader())
+        runtime.selectTypeAndRefresh(StoryType.NEW_STORIES)
+        runCurrent()
+        assertEquals(0L, session.lastLoaded)
+    }
+
+    @Test
+    fun algoliaFirstPageSuccessAdvancesFreshnessButPaginationAndFailuresDoNot() = runTest {
+        val session = StoriesSessionState()
+        val saved = SavedItemsRepository(MemoryKeyValueStore())
+        var now = 100L
+        var fail = false
+        val algolia = object : AlgoliaRepository by UnusedAlgoliaRepository {
+            override suspend fun search(url: String): AlgoliaSearchPage {
+                if (fail) error("Offline")
+                val page = io.ktor.http.Url(url).parameters["page"]!!.toInt()
+                return AlgoliaSearchPage(listOf(Story("Item", page + 1, true, false)), page, 3)
+            }
+        }
+        val runtime = cacheRuntime(backgroundScope, session, saved, storyRequests(session, saved, backgroundScope, algolia = algolia),
+            StandardTestDispatcher(testScheduler), nowMillis = { now })
+        runtime.updateAvailableStoryTypes(emptySet(), hasAccount = false)
+        runtime.selectTypeAndRefresh(StoryType.LAST_24_HOURS)
+        runCurrent()
+        assertEquals(now, session.lastLoaded)
+        now += 500L
+        runtime.searchOptions.loadMore()
+        runCurrent()
+        assertEquals(100L, session.lastLoaded)
+        fail = true
+        runtime.refresh(false)
+        runCurrent()
+        assertEquals(100L, session.lastLoaded)
+    }
+
     private fun cacheRuntime(
         scope: CoroutineScope,
         session: StoriesSessionState,
@@ -1450,6 +1654,7 @@ class StoryRequestsTest {
         actions: SavedItemActionUseCase = SavedItemActionUseCase(saved, { 0L },
             voteRequest = { _, _ -> error("Not used") },
             favoriteRequest = { _, _ -> error("Not used") }),
+        startStoryCache: (StoryCacheRequest) -> Unit = {},
     ) = StoriesFeatureRuntime(
         scope = scope,
         sessionState = session,
@@ -1470,6 +1675,7 @@ class StoryRequestsTest {
             ) else null
         },
         loadCachedStories = cached,
+        startStoryCache = startStoryCache,
         cacheDispatcher = worker,
         hiddenPosts = hiddenPosts,
     )
@@ -1643,10 +1849,12 @@ class StoryRequestsTest {
         api: HackerNewsApi = UnusedHackerNewsApi,
         userItemsLoader: HackerNewsUserItemsLoader = UnusedUserItemsLoader,
         algolia: AlgoliaRepository = UnusedAlgoliaRepository,
+        savedSearchCache: SavedStorySearchCache? = null,
     ) = StoryRequests(
         scope = scope,
         sessionState = session,
         algoliaRepository = algolia,
+        savedSearchCache = savedSearchCache,
         hackerNewsRepository = UnusedHackerNewsRepository,
         hackerNewsApi = api,
         userItemsLoader = userItemsLoader,

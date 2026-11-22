@@ -144,6 +144,27 @@ class StoriesCoordinatorPolicyTest {
         )
     }
 
+    @Test
+    fun filteredEmptyFeedCompletesWithoutShowingAnIndefiniteSpinner() {
+        val store = StoryListStore()
+        fun shell() = StoriesShellPresentationPolicy.present(shellInput().copy(
+            storyCount = store.state.value.items.size,
+            feedLoadCompleted = store.state.value.hasCompletedLoad,
+            loadingFailed = store.state.value.failure != null,
+        ))
+        assertTrue(shell().showLoading)
+        store.beginLoad(refreshing = false, clearItems = true)
+        assertFalse(shell().showEmptyFeed)
+        store.replace(emptyList())
+        assertTrue(shell().showEmptyFeed)
+        assertFalse(shell().showLoading)
+        store.beginLoad(refreshing = true)
+        assertFalse(shell().showEmptyFeed)
+        store.fail(StoryLoadFailure.GENERAL)
+        assertFalse(shell().showEmptyFeed)
+        assertFalse(shell().showLoading)
+    }
+
     private fun shellInput(
         searching: Boolean = false,
         submittedSearch: Boolean = false,

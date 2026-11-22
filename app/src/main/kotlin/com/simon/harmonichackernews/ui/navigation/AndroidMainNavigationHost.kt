@@ -194,7 +194,7 @@ private fun MainNavigation(
     ReportDrawnWhen {
         navigationSnapshot.currentDestination != MainDestination.STORIES ||
             controller.storiesComposeController?.let { stories ->
-                stories.presentation.loadingFailed || stories.presentation.showEmptySavedList ||
+                stories.presentation.loadingFailed || stories.presentation.showEmptySavedList || stories.presentation.showEmptyFeed ||
                     (!stories.presentation.loading && stories.mainStories.any { it.loaded })
             } == true
     }
@@ -706,6 +706,7 @@ private fun MainNavigation(
             CacheStoriesDialog(
                 initialStoryCount = uiDependencies.userSettings
                     .cache.storiesToCache,
+                availableStoryCount = controller.storiesComposeController?.availableStoriesToCache() ?: 0,
                 integratedWebView = uiDependencies.userSettings.reading.integratedWebView,
                 onDismiss = controller::dismissCacheStoriesDialog,
                 onConfirm = controller::confirmCacheStories,

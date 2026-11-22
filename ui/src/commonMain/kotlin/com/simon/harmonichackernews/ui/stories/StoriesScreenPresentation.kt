@@ -50,6 +50,8 @@ data class StoriesScreenPresentation(
     val emptySavedListText: String = "No saved stories",
     val emptySavedListIcon: DrawableResource = Res.drawable.ic_bookmark,
     val showEmptySearch: Boolean = false,
+    val showEmptyFeed: Boolean = false,
+    val isDownloads: Boolean = false,
     val showRefreshPrompt: Boolean = false,
     val lastUpdatedText: String? = null,
     val showLoadMore: Boolean = false,
@@ -98,6 +100,7 @@ internal fun storiesScreenPresentation(
             showingCached = listState.showingCached,
             cacheInProgress = storyCache.isCaching,
             visibleStoryCount = state.activeVisibleItemCount,
+            feedLoadCompleted = listState.hasCompletedLoad,
         ),
     )
     val savedKind = when {
@@ -142,6 +145,8 @@ internal fun storiesScreenPresentation(
         ),
         emptySavedListIcon = emptyIcon,
         showEmptySearch = shell.showEmptySearch,
+        showEmptyFeed = shell.showEmptyFeed,
+        isDownloads = type == com.simon.harmonichackernews.StoryType.DOWNLOADS,
         showRefreshPrompt = platform.showRefreshPromptOverride ?: state.updateAvailable,
         lastUpdatedText = platform.lastUpdatedText,
         showLoadMore = state.activeHasLoadMore,

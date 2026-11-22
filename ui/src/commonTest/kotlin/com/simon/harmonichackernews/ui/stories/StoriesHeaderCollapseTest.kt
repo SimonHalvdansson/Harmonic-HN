@@ -2,8 +2,28 @@ package com.simon.harmonichackernews.ui.stories
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class StoriesHeaderCollapseTest {
+    @Test
+    fun deliberateReverseScrollRevealsControlsUntilForwardScrollOrTop() {
+        val peek = FeedControlsReveal(24f)
+        peek.onScroll(30f, atTop = false, headerHidden = false)
+        assertFalse(peek.visible)
+        peek.onScroll(-8f, atTop = false, headerHidden = true)
+        peek.onScroll(15f, atTop = false, headerHidden = true)
+        assertFalse(peek.visible)
+        peek.onScroll(9f, atTop = false, headerHidden = true)
+        assertTrue(peek.visible)
+        peek.onScroll(-8f, atTop = false, headerHidden = true)
+        assertTrue(peek.visible)
+        peek.onScroll(-16f, atTop = false, headerHidden = true)
+        assertFalse(peek.visible)
+        peek.onScroll(30f, atTop = false, headerHidden = true)
+        peek.onScroll(1f, atTop = true, headerHidden = false)
+        assertFalse(peek.visible)
+    }
     @Test
     fun firstItemTransitionKeepsCollapsingHeaderContinuously() {
         val itemHeights = listOf(180, 250)

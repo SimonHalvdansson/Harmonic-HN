@@ -23,6 +23,7 @@ import com.simon.harmonichackernews.platform.ConnectivityService
 import com.simon.harmonichackernews.platform.ObservableHackerNewsAccountRepository
 import com.simon.harmonichackernews.platform.ObservableHistoryStore
 import com.simon.harmonichackernews.settings.ContentFilters
+import com.simon.harmonichackernews.settings.StoryCachePreferences
 import com.simon.harmonichackernews.settings.UserSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -501,12 +502,8 @@ class StoriesFeatureRuntime(
             changed()
         }
 
-        if (sessionState.initialized && !feedRefreshStarted && hideReadChanged) {
-            refresh(showSwipeRefreshIndicator = false)
-            feedRefreshStarted = true
-        }
-        if (sessionState.initialized && !feedRefreshStarted && filtersChanged) {
-            refresh(showSwipeRefreshIndicator = false)
+        if (sessionState.initialized && !feedRefreshStarted && (hideReadChanged || filtersChanged)) {
+            if (activeStore.state.value.showingCached) showCachedStories() else refresh(false)
         }
         if (swipeToHideChanged) {
             syncHiddenPosts()
@@ -557,13 +554,28 @@ class StoriesFeatureRuntime(
         changed()
     }
 
+    private fun eligibleCacheStoryIds(): List<Int> {
+        val includeUnloaded = requests.canCacheUnloadedStories(currentType)
+        val read = historyStore.historyState.value.ids
+        return activeStories.asSequence().filter { story ->
+            story.id > 0 && !story.isComment && !story.isFrontpageLink && !story.loadingFailed &&
+                (story.loaded || includeUnloaded) && (!hideRead || story.id !in read) &&
+                !requests.shouldHideStory(story, currentType)
+        }.map(Story::id).distinct().take(StoryCachePreferences.MAX_COUNT).toList()
+    }
+
+    fun availableStoriesToCache(): Int = (sessionState.storyCacheSelection ?: eligibleCacheStoryIds()).size
+
     fun requestStoryCache(storyCount: Int, downloadWebViewContents: Boolean) {
-        userSettings.setStoriesToCache(storyCount)
-        val cache = userSettings.cache
+        val ids = (sessionState.storyCacheSelection ?: eligibleCacheStoryIds()).take(storyCount.coerceAtLeast(0))
+        sessionState.storyCacheSelection = null
+        if (ids.isEmpty()) return
+        if (storyCount >= StoryCachePreferences.MIN_COUNT) userSettings.setStoriesToCache(storyCount)
         startStoryCache(
             StoryCacheRequest(
-                storyCount = cache.storiesToCache,
+                storyCount = ids.size,
                 cacheArticleSnapshots = downloadWebViewContents,
+                storyIds = ids,
             ),
         )
     }
@@ -585,6 +597,7 @@ class StoriesFeatureRuntime(
     fun selectType(target: StoryListTarget, type: StoryType) {
         if (target == StoryListTarget.MAIN && type != sessionState.mainStoryType) {
             sessionState.hiddenStoryRows.reset()
+            sessionState.lastLoaded = 0L
         }
         if (type != currentType) visibleRanges.remove(store(target))
         when (target) {
@@ -643,12 +656,14 @@ class StoriesFeatureRuntime(
 
     fun shiftFrontPageDay(days: Int) {
         frontPageDay.shift(days)
+        if (frontPageDay.selectedMillis != sessionState.frontPageDayUtcMillis) sessionState.lastLoaded = 0L
         sessionState.frontPageDayUtcMillis = frontPageDay.selectedMillis
         if (!searching && currentType.isFront) refresh(false, true)
     }
 
     fun selectFrontPageDay(selection: Long) {
         frontPageDay.select(selection)
+        if (frontPageDay.selectedMillis != sessionState.frontPageDayUtcMillis) sessionState.lastLoaded = 0L
         sessionState.frontPageDayUtcMillis = frontPageDay.selectedMillis
         if (!searching && currentType.isFront) refresh(false, true)
     }
@@ -705,6 +720,18 @@ class StoriesFeatureRuntime(
         searchOptions.search(query)
     }
 
+    fun clearSearch() {
+        if (!searching) return
+        sessionState.lastSearch = ""
+        searchOptions.cancel(clearResults = true)
+        searchRuntime.cancel(searchStore)
+        searchStore.replace(emptyList())
+        activeLoadedThrough = -1
+        refreshIndicatorShowing = false
+        rateLimited = false
+        changed()
+    }
+
     fun selectSearchOption(option: StorySearchOption, index: Int) {
         when (option) {
             StorySearchOption.SORT -> searchOptions.selectSort(index)
@@ -754,19 +781,20 @@ class StoriesFeatureRuntime(
         )
         if (plan.clearItems) {
             userItemsInitialLoadInProgress = plan.source == StoryFeedSource.USER_ITEMS
-            replaceActive(emptyList())
         }
-        if (plan.recordRefreshTime) sessionState.lastLoaded = nowMillis()
-
         when (plan.source) {
             StoryFeedSource.SEARCH -> Unit
             StoryFeedSource.ALGOLIA -> searchOptions.loadTopStories(
                 storyType = type,
                 startTime = searchOptions.getTopStoriesStartTime(type),
+                onRefreshSucceeded = {
+                    if (isCurrentFeed(type, generation)) sessionState.lastLoaded = nowMillis()
+                },
             )
             StoryFeedSource.BOOKMARKS -> loadBookmarks()
             StoryFeedSource.USER_ITEMS -> loadUserItems(plan, generation)
             StoryFeedSource.HISTORY -> loadHistory()
+            StoryFeedSource.DOWNLOADS -> loadCachedFeed(generation, activeStore)
             StoryFeedSource.FRONTPAGE_LINKS,
             StoryFeedSource.SCRAPED_FRONTPAGE,
             StoryFeedSource.UNSLOP_RSS,
@@ -825,7 +853,8 @@ class StoriesFeatureRuntime(
         // Retained feed rows can outlive this runtime or a search generation. Their IDs are
         // already known; resume lazy cache preparation without enumerating the cache itself.
         if (feedCache == null && activeStories.isNotEmpty() && !searching && !currentType.isAlgolia &&
-            !currentType.isBookmarks && !currentType.isUserItemList && !currentType.isHistory &&
+            !currentType.isUserItemList &&
+            (requests.hasSavedStoryCache || (!currentType.isBookmarks && !currentType.isHistory)) &&
             !activeStore.state.value.showingCached && !activeStore.state.value.loading &&
             !activeStore.state.value.refreshing
         ) {
@@ -924,13 +953,15 @@ class StoriesFeatureRuntime(
             it.id in ids && it.loaded && !it.isComment && !it.isFrontpageLink && !it.isRead
         }
         if (passed.isEmpty()) return
-        passed.forEach { updateStoryReadState(it, true) }
+        val passedIds = passed.map(Story::id)
+        val membership = passedIds.toSet()
+        mainStore.markRead(membership)
+        searchStore.markRead(membership)
         requests.rememberSavedStories(passed)
         scope.launch {
-            val timestamp = nowMillis()
-            passed.forEach { historyStore.recordHistory(it.id, timestamp) }
+            historyStore.recordHistories(passedIds, nowMillis())
         }
-        changed()
+        changed(contentAlreadyPublished = true)
     }
 
     fun openStory(story: Story, showWebsite: Boolean) {
@@ -1029,6 +1060,9 @@ class StoriesFeatureRuntime(
     }
 
     fun handleMenuAction(action: StoriesMenuAction) {
+        if (action == StoriesMenuAction.CACHE) {
+            sessionState.storyCacheSelection = eligibleCacheStoryIds()
+        }
         if (action == StoriesMenuAction.CLEAR_HISTORY) {
             scope.launch {
                 historyStore.clearHistory()
@@ -1194,17 +1228,23 @@ class StoriesFeatureRuntime(
 
     fun showCachedStories(cachedStories: List<Story>) {
         beginGeneration()
+        applyCachedStories(cachedStories)
+    }
+
+    private fun applyCachedStories(cachedStories: List<Story>) {
         activeStore.setShowingCached(true)
         activeStore.clearFailure()
         refreshIndicatorShowing = false
         rateLimited = false
         sessionState.hiddenStoryRows.reset()
-        val visibleStories = cachedStories.filterNot {
-            sessionState.newStoriesFilter.shouldHide(it, currentType, searching)
+        val readIds = historyStore.historyState.value.ids
+        val visibleStories = cachedStories.filter { story ->
+            story.isRead = story.id in readIds
+            (!hideRead || !story.isRead) && !requests.shouldHideStory(story, currentType)
         }
         replaceActive(visibleStories)
         activeStore.markLoadedThrough(visibleStories.lastIndex)
-        visibleStories.filter(Story::loaded).forEach(::prefetch)
+        prefetchVisibleStoryResources()
         changed()
     }
 
@@ -1212,12 +1252,17 @@ class StoriesFeatureRuntime(
         val generation = beginGeneration()
         val target = activeStore
         target.beginLoad(refreshing = false, clearItems = false)
+        loadCachedFeed(generation, target)
+    }
+
+    private fun loadCachedFeed(generation: Int, target: StoryListStore) {
         feedPreparationJob = scope.launch {
             try {
                 val stories = withContext(cacheDispatcher) { loadCachedStories() }
+                historyStore.awaitHistories()
                 if (!isCurrentActionContext(generation, target)) return@launch
                 feedPreparationJob = null
-                showCachedStories(stories)
+                applyCachedStories(stories)
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Exception) {
@@ -1264,7 +1309,9 @@ class StoriesFeatureRuntime(
         )
         when (result) {
             StoryHistorySyncResult.ITEMS_REMOVED -> loadVisibleStories()
-            StoryHistorySyncResult.REFRESH_REQUIRED -> refresh(false)
+            StoryHistorySyncResult.REFRESH_REQUIRED -> {
+                if (activeStore.state.value.showingCached) showCachedStories() else refresh(false)
+            }
             StoryHistorySyncResult.CONTENT_CHANGED,
             StoryHistorySyncResult.UNCHANGED -> Unit
         }
@@ -1343,12 +1390,14 @@ class StoriesFeatureRuntime(
                     is StoryFeedResult.Scraped -> result.page.itemIds
                     is StoryFeedResult.LinkDirectory -> emptyList()
                 }
-                val commentIds = (result as? StoryFeedResult.Scraped)?.page?.commentIds.orEmpty().toSet()
-                prepareFeedCache(ids, storyType, generation, commentIds) { cached ->
+                val page = (result as? StoryFeedResult.Scraped)?.page
+                val freshIds = page?.storyHeaders.orEmpty().keys
+                prepareFeedCache(ids, storyType, generation, page?.commentIds.orEmpty().toSet(), freshIds) { cached ->
                     refreshIndicatorShowing = false
                     rateLimited = false
                     sessionState.hiddenStoryRows.reset()
                     val application = feedRuntime.applyInitial(activeStore, storyType, result, cached)
+                    if (application.applied) sessionState.lastLoaded = nowMillis()
                     if (application.applied && minimumVisibleCount > 0) {
                         activeStore.setVisibleStoryCount(max(
                             activeStore.state.value.visibleStoryCount,
@@ -1356,10 +1405,10 @@ class StoriesFeatureRuntime(
                         ))
                     }
                     if (application.loadVisibleStories) {
-                        requests.invalidateLoadedStoryRows(application.loadedStories)
+                        requests.invalidateLoadedStoryRows(application.loadedStories, freshIds)
                         loadVisibleStories()
                     }
-                    application.loadedStories.filter(Story::loaded).forEach(::prefetch)
+                    if (!application.loadVisibleStories) application.loadedStories.forEach(::prefetch)
                     changed()
                 }
             } catch (error: CancellationException) {
@@ -1371,6 +1420,7 @@ class StoriesFeatureRuntime(
                 val failure = StoryFeedRefreshPolicy.failureFor(error)
                 rateLimited = failure == StoryLoadFailure.RATE_LIMITED
                 activeStore.fail(failure)
+                evaluateUpdate(userSettings.story.alwaysShowTapToRefresh)
                 changed()
             }
         }
@@ -1383,14 +1433,13 @@ class StoriesFeatureRuntime(
                 val page = requests.loadNextScrapedPage(storyType, nextPageUrl)
                 if (!isCurrentFeed(storyType, generation)) return@launch
                 prepareFeedCache(
-                    page.itemIds, storyType, generation, page.commentIds.toSet(), append = true,
+                    page.itemIds, storyType, generation, page.commentIds.toSet(), page.storyHeaders.keys, append = true,
                 ) { cached ->
                     val application = feedRuntime.applyNextScrapedPage(activeStore, storyType, page, cached)
                     if (application.loadVisibleStories) {
-                        requests.invalidateLoadedStoryRows(application.loadedStories)
+                        requests.invalidateLoadedStoryRows(application.loadedStories, page.storyHeaders.keys)
                         loadVisibleStories()
                     }
-                    application.loadedStories.filter(Story::loaded).forEach(::prefetch)
                     changed()
                 }
             } catch (error: CancellationException) {
@@ -1408,6 +1457,7 @@ class StoriesFeatureRuntime(
         type: StoryType,
         generation: Int,
         commentIds: Set<Int>,
+        freshIds: Set<Int>,
         append: Boolean = false,
         apply: (Map<Int, Story>) -> Unit,
     ) {
@@ -1444,7 +1494,7 @@ class StoriesFeatureRuntime(
                 val batchEnd = cursor + min(INITIAL_CACHE_ROWS - visible, candidates.size - cursor)
                 val batch = candidates.subList(cursor, batchEnd).toList()
                 cursor += batch.size
-                val prepared = readFeedCache(batch.filterNot(existing::contains), rebuild = false) { header ->
+                val prepared = readFeedCache(batch.filterNot { it in existing || it in freshIds }, rebuild = false) { header ->
                     Story("Loading...", header.storyId, false, false).takeIf(header::applyTo)
                 }
                 if (!isCurrentCache(cache)) return@launch
@@ -1515,7 +1565,10 @@ class StoriesFeatureRuntime(
                 it.id in cache.recover && it.id !in cache.recovered
             }.take(1)
             if (batch.isEmpty()) return
-            val headers = readFeedCache(batch.map(Story::id), rebuild = rebuilding) { it }
+            val ids = batch.map(Story::id)
+            val savedList = cache.type.isBookmarks || cache.type.isHistory
+            val saved = if (savedList && !rebuilding) requests.loadSavedMetadata(ids) else emptyMap()
+            val headers = readFeedCache(ids.filterNot(saved::containsKey), rebuild = rebuilding) { it }
             if (!isCurrentCache(cache)) return
             if (rebuilding) cache.recovered.addAll(batch.map(Story::id))
             else cache.prepared.addAll(batch.map(Story::id))
@@ -1524,16 +1577,26 @@ class StoriesFeatureRuntime(
                 if (story !in activeStories) continue
                 // Keep the feed's row classification, which can differ from older cached JSON.
                 val isComment = story.isComment
+                val displayedTime = story.createdAtEpochSeconds
                 // A request or an external update may have won while the worker was preparing.
-                if (!story.loaded && story.id !in cache.protected && headers[story.id]?.applyTo(story) == true) {
-                    story.isComment = isComment
-                    if (requests.shouldHideStory(story, cache.type)) {
-                        removeStory(story, loadReplacement = true)
-                        continue
+                if (!story.loaded && story.id !in cache.protected) {
+                    val metadata = saved[story.id]
+                    if (metadata != null) metadata.applyTo(story, historyStore.contains(story.id))
+                    val hydrated = metadata != null || headers[story.id]?.applyTo(story) == true
+                    if (hydrated) {
+                        if (savedList) story.isRead = historyStore.contains(story.id) else story.isComment = isComment
+                        if (cache.type.isHistory) {
+                            story.originalCreatedAtEpochSeconds = story.createdAtEpochSeconds
+                            story.createdAtEpochSeconds = displayedTime
+                        }
+                        if (requests.shouldHideStory(story, cache.type) || (cache.type.isBookmarks && !matchesSavedFilter(story))) {
+                            removeStory(story, loadReplacement = true)
+                            continue
+                        }
+                        if (!rebuilding && (!savedList || online)) requests.invalidateLoadedStoryRows(listOf(story))
+                        contentChanged = true
+                        prefetch(story)
                     }
-                    if (!rebuilding) requests.invalidateLoadedStoryRows(listOf(story))
-                    contentChanged = true
-                    prefetch(story)
                 }
                 if (!rebuilding && activeStories.indexOf(story) <= activeLoadedThrough) {
                     loadStory(story, cache.generation)
@@ -1635,6 +1698,7 @@ class StoriesFeatureRuntime(
 
     private fun applyUserItems(effect: StoryRequestEvent.UserItemsSynced) {
         if (!isCurrentUserItems(effect.source, effect.generation)) return
+        sessionState.lastLoaded = nowMillis()
         syncUserItemStories(effect.snapshot.itemIds, effect.snapshot.commentIds)
         userItemsInitialLoadInProgress = false
         refreshIndicatorShowing = false
@@ -1778,7 +1842,10 @@ class StoriesFeatureRuntime(
         scope.launch {
             try {
                 rootStoryResolver.resolveParentChain(story, parentId) ?: return@launch
-                if (isCurrentRow(story, generation)) changed(story)
+                if (isCurrentRow(story, generation)) {
+                    if (currentType.isBookmarks) requests.rememberSavedStories(listOf(story))
+                    changed(story)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (_: Throwable) {

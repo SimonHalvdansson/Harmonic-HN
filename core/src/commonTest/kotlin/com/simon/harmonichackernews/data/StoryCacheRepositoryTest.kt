@@ -8,8 +8,34 @@ import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
 import kotlinx.coroutines.test.runTest
 import com.simon.harmonichackernews.network.AlgoliaCommentsParser
+import com.simon.harmonichackernews.cache.StoryDownloadPosition
 
 class StoryCacheRepositoryTest {
+    @Test
+    fun downloadsKeepSelectedRankAcrossRecreationAndIncludeSevenDaysOfLegacyEntries() {
+        val files = FakeFiles()
+        val metadata = FakeMetadata()
+        val cache = StoryCacheRepository(files, metadata)
+        val day = 86_400_000L
+        val now = 10 * day
+        cache.storeStory(2, storyJson(2, "Second"), now - day, download = StoryDownloadPosition(now - day, 1))
+        cache.storeStory(9, storyJson(9, "First"), now - day + 50, download = StoryDownloadPosition(now - day, 0))
+        cache.storeStory(5, storyJson(5, "New batch"), now, download = StoryDownloadPosition(now, 0))
+        cache.storeStory(8, storyJson(8, "Old cached discussion"), now - 7 * day)
+        cache.storeStory(3, storyJson(3, "Recently opened"), now - 2 * day)
+        cache.storeStory(4, storyJson(4, "Expired"), now - 7 * day - 1)
+        // Opening a downloaded thread later must preserve its selected rank.
+        cache.storeStory(2, storyJson(2, "Second"), now)
+        val reopened = StoryCacheRepository(files, metadata)
+        val rows = reopened.recentStories(now)
+        assertEquals(listOf(5, 9, 2, 3, 8), rows.map(Story::id))
+        assertEquals(listOf(now, now - day, now - day, now - 2 * day, now - 7 * day), rows.map(Story::cachedAtMillis))
+        reopened.remove(9)
+        assertNull(metadata.getString(StoryCacheKeys.downloadPositionKey(9)))
+        reopened.clear()
+        assertFalse(metadata.keys().any(StoryCacheKeys::isDownloadPositionKey))
+    }
+
     @Test
     fun downloadedCommentsAreUnviewedUntilDisplayedAndVisitMetadataFollowsCacheLifetime() {
         val files = FakeFiles()

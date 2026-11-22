@@ -13,7 +13,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -30,6 +31,7 @@ import com.simon.harmonichackernews.ui.settings.SettingsDialogTextButton
 import com.simon.harmonichackernews.ui.settings.SettingsDialogTitle
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import com.simon.harmonichackernews.settings.StoryCachePreferences
+import kotlin.math.roundToInt
 
 /**
  * Compose replacement for the former `cache_stories_dialog.xml` hierarchy. The selected value
@@ -41,20 +43,22 @@ fun CacheStoriesDialog(
     initialStoryCount: Int,
     integratedWebView: Boolean,
     initialDownloadWebViewContents: Boolean = integratedWebView,
+    availableStoryCount: Int = StoryCachePreferences.MAX_COUNT,
     onDismiss: () -> Unit,
     onConfirm: (Int, Boolean) -> Unit,
 ) {
-    val minimum = StoryCachePreferences.MIN_COUNT
-    val maximum = StoryCachePreferences.MAX_COUNT
-    val step = StoryCachePreferences.STEP
-    var storyCount by rememberSaveable(initialStoryCount) {
-        mutableFloatStateOf(StoryCachePreferences.sanitizeCount(initialStoryCount).toFloat())
+    val maximum = availableStoryCount.coerceIn(0, StoryCachePreferences.MAX_COUNT)
+    val choices = remember(maximum) {
+        (StoryCachePreferences.MIN_COUNT until maximum step StoryCachePreferences.STEP).toList() + maximum
+    }
+    var choice by rememberSaveable(initialStoryCount, maximum) {
+        mutableIntStateOf(choices.indexOfLast { it <= initialStoryCount }.coerceAtLeast(0))
     }
     var downloadWebViewContents by rememberSaveable(
         integratedWebView,
         initialDownloadWebViewContents,
     ) { mutableStateOf(integratedWebView && initialDownloadWebViewContents) }
-    val sanitizedStoryCount = StoryCachePreferences.sanitizeCount(storyCount.toInt())
+    val storyCount = choices[choice]
     val sliderDescription = stringResource(Res.string.cache_stories_slider_content_description)
 
     SettingsAlertDialog(
@@ -130,18 +134,16 @@ fun CacheStoriesDialog(
                         ),
                     )
                     Text(
-                        text = sanitizedStoryCount.toString(),
+                        text = storyCount.toString(),
                         color = MaterialTheme.colorScheme.onSurface,
                         style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                         fontFamily = AppUiFontFamily,
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Slider(
-                    value = storyCount,
-                    onValueChange = {
-                        storyCount = StoryCachePreferences.sanitizeCount(it.toInt()).toFloat()
-                    },
+                if (choices.size > 1) Slider(
+                    value = choice.toFloat(),
+                    onValueChange = { choice = it.roundToInt() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
@@ -150,8 +152,8 @@ fun CacheStoriesDialog(
                             end = HarmonicDimens.compose_settings_dialog_content_padding,
                         )
                         .semantics { contentDescription = sliderDescription },
-                    valueRange = minimum.toFloat()..maximum.toFloat(),
-                    steps = ((maximum - minimum) / step) - 1,
+                    valueRange = 0f..choices.lastIndex.toFloat(),
+                    steps = choices.size - 2,
                 )
             }
         },
@@ -165,9 +167,10 @@ fun CacheStoriesDialog(
         },
         confirmButton = {
             SettingsDialogTextButton(
+                enabled = storyCount > 0,
                 onClick = {
                     onConfirm(
-                        sanitizedStoryCount,
+                        storyCount,
                         integratedWebView && downloadWebViewContents,
                     )
                 },

@@ -23,6 +23,19 @@ import kotlin.test.assertTrue
 
 class StoriesScreenControllerPreviewNavigationTest {
     @Test
+    fun clearingDraftClearsAppliedSearchAndKeepsSearchOpen() {
+        val listener = TestListener(false)
+        val controller = controller(false, listener)
+        controller.updateContent(storiesState().copy(searching = true, searchDraft = "nyx"))
+        controller.updateSearchDraft("nyxt")
+        assertEquals(0, listener.searchClears)
+        controller.updateSearchDraft("")
+        assertEquals(1, listener.searchClears)
+        assertEquals("", controller.searchDraft)
+        assertTrue(controller.searching)
+    }
+
+    @Test
     fun seenRowsSurviveControllerRecreationForTheSameSession() {
         val session = com.simon.harmonichackernews.presentation.StoriesSessionState()
         fun recreate() = StoriesScreenController.create(
@@ -531,6 +544,8 @@ class StoriesScreenControllerPreviewNavigationTest {
         override fun onOpenSearch() = Unit
         override fun onCloseSearch() = Unit
         override fun onSearch(query: String) = Unit
+        var searchClears = 0
+        override fun onClearSearch() { searchClears++ }
         override fun onSearchOption(kind: StorySearchOption, index: Int) = Unit
         override fun onRefresh(showMainLoadingIndicator: Boolean) {
             refreshLoadingModes += showMainLoadingIndicator

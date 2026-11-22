@@ -4,6 +4,7 @@ import com.simon.harmonichackernews.data.Story
 import com.simon.harmonichackernews.data.ItemTimeFormatter
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
 import com.simon.harmonichackernews.utils.DomainNamePolicy
+import com.simon.harmonichackernews.utils.RelativeTimeFormatter
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.network.resolvedImageUrl
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
@@ -70,6 +71,7 @@ object StoryRowModelFactory {
             aiSummaryText = item.presentation.aiSummaryText,
             points = item.score,
             createdAtEpochSeconds = item.createdAtEpochSeconds,
+            cachedAtMillis = item.presentation.cachedAtMillis,
             commentCount = item.descendantCount,
             fullDomain = fullDomain,
             position = position,
@@ -100,6 +102,7 @@ object StoryRowModelFactory {
             aiSummaryText = story.aiSummaryText,
             points = story.score,
             createdAtEpochSeconds = story.createdAtEpochSeconds,
+            cachedAtMillis = story.cachedAtMillis,
             commentCount = story.descendants,
             fullDomain = fullDomain,
             position = position,
@@ -119,6 +122,7 @@ object StoryRowModelFactory {
         aiSummaryText: String?,
         points: Int,
         createdAtEpochSeconds: Int,
+        cachedAtMillis: Long?,
         commentCount: Int,
         fullDomain: String,
         position: Int?,
@@ -147,7 +151,8 @@ object StoryRowModelFactory {
             points = points,
             domain = fullDomain,
             domainWithoutTopLevel = shortDomain,
-            age = ItemTimeFormatter.format(createdAtEpochSeconds, nowMillis),
+            age = if (cachedAtMillis == null) ItemTimeFormatter.format(createdAtEpochSeconds, nowMillis)
+                else "Cached " + RelativeTimeFormatter.format(cachedAtMillis, nowMillis),
             commentCount = commentCount,
             faviconUrl = resources.faviconUrl,
             previewImageUrl = resources.previewImageUrl,

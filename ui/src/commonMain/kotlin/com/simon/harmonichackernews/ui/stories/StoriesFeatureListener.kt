@@ -33,6 +33,7 @@ class StoriesFeatureListener(
     override fun consumeSearchFocusRequest(): Boolean = store.consumeSearchFocusRequest()
 
     override fun onSearch(query: String) = store.accept(StoriesIntent.Search(query))
+    override fun onClearSearch() = store.accept(StoriesIntent.ClearSearch)
     override fun onSearchOption(kind: StorySearchOption, index: Int) =
         store.accept(StoriesIntent.SelectSearchOption(kind, index))
     override fun onRefresh(showMainLoadingIndicator: Boolean) = store.accept(
@@ -51,6 +52,7 @@ class StoriesFeatureListener(
         store.accept(StoriesIntent.SelectFrontDate(day))
     override fun onMoreAction(action: StoriesMenuAction) =
         store.accept(StoriesIntent.More(action))
+    override fun availableStoriesToCache(): Int = store.availableStoriesToCache()
     override fun onCacheStoriesConfirmed(storyCount: Int, downloadWebViewContents: Boolean) =
         store.accept(StoriesIntent.CacheStories(storyCount, downloadWebViewContents))
     override fun onHidePost(story: StoryListItemSnapshot) =

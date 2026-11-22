@@ -17,6 +17,7 @@ data class StoriesShellPresentationInput(
     val showingCached: Boolean,
     val cacheInProgress: Boolean,
     val visibleStoryCount: Int,
+    val feedLoadCompleted: Boolean = false,
 )
 
 data class StoriesShellPresentation(
@@ -25,6 +26,7 @@ data class StoriesShellPresentation(
     val showLoading: Boolean,
     val loadingFailureMessage: String,
     val canCacheStories: Boolean,
+    val showEmptyFeed: Boolean,
 )
 
 /** Portable empty/loading/cache affordance decisions for the stories root shell. */
@@ -32,6 +34,7 @@ object StoriesShellPresentationPolicy {
     fun present(input: StoriesShellPresentationInput): StoriesShellPresentation {
         val empty = input.storyCount == 0
         val failed = input.loadingFailed || input.notFound
+        val regularFeed = !input.searching && !input.bookmarks && !input.history && !input.userItems
         return StoriesShellPresentation(
             showEmptySearch = input.searching && input.submittedSearch && empty &&
                 !input.searchLoading && !failed,
@@ -45,7 +48,7 @@ object StoriesShellPresentationPolicy {
             showLoading = if (input.searching) {
                 input.searchLoading
             } else {
-                empty && !failed && !input.bookmarks && !input.history &&
+                empty && !failed && !input.feedLoadCompleted && !input.bookmarks && !input.history &&
                     (!input.userItems || input.userItemsInitialLoadInProgress)
             },
             loadingFailureMessage = when {
@@ -55,6 +58,7 @@ object StoriesShellPresentationPolicy {
             },
             canCacheStories = input.visibleStoryCount > 0 &&
                 !input.showingCached && !input.cacheInProgress && input.online,
+            showEmptyFeed = regularFeed && empty && input.feedLoadCompleted && !failed && !input.refreshIndicatorShowing,
         )
     }
 }
