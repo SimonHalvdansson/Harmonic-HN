@@ -50,8 +50,7 @@ sealed interface CommentsIntent {
     data object OpenHeaderLink : CommentsIntent
     data class HeaderPreviewImageResult(val imageUrl: String, val success: Boolean) : CommentsIntent
     data class HeaderAction(val action: CommentsHeaderAction) : CommentsIntent
-    data class SummarizeDiscussion(val regenerate: Boolean = false) : CommentsIntent
-    data object DismissDiscussionSummary : CommentsIntent
+    data object SummarizeDiscussion : CommentsIntent
     data class ShareAction(val action: CommentsShareAction) : CommentsIntent
     data class MoreAction(val action: CommentsMoreAction) : CommentsIntent
     data class ExpandParents(val commentId: Int) : CommentsIntent
@@ -178,8 +177,7 @@ class CommentsFeatureStore internal constructor(
             is CommentsIntent.HeaderPreviewImageResult ->
                 runtime.completeHeaderPreviewImageLoad(intent.imageUrl, intent.success)
             is CommentsIntent.HeaderAction -> runtime.handleHeaderAction(intent.action)
-            is CommentsIntent.SummarizeDiscussion -> runtime.openDiscussionSummary(intent.regenerate)
-            CommentsIntent.DismissDiscussionSummary -> runtime.dismissDiscussionSummary()
+            CommentsIntent.SummarizeDiscussion -> runtime.openDiscussionSummary()
             is CommentsIntent.ShareAction -> runtime.handleShareAction(intent.action)
             is CommentsIntent.MoreAction -> runtime.handleMoreAction(intent.action)
             is CommentsIntent.ExpandParents -> runtime.expandParents(intent.commentId)

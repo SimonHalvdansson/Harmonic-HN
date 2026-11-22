@@ -17,7 +17,6 @@ import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.summary.DiscussionSummaryState
-import com.simon.harmonichackernews.summary.AskSource
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 /** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
@@ -104,6 +103,7 @@ class CommentsScreenController private constructor(
     val story: StoryListItemSnapshot get() = screenState.story
     /** Hosts observe selection so text-selection drags cannot also move the comments sheet. */
     val summarySelectionState = SelectionState()
+    val discussionSelectionState = SelectionState()
     val accountUser: String? get() = screenState.accountUser
     val comments: List<PortableCommentItem> get() = screenState.comments
     val visibleComments: List<PortableVisibleComment> get() = screenState.visibleComments
@@ -565,10 +565,7 @@ class CommentsScreenController private constructor(
         listener.onCommentActionOverlayVisibilityChanged(true)
     }
 
-    // Android only composes the Ask host once an overlay is requested. A discussion has no
-    // source card to open Ask directly, so count its pending request before the host mounts.
-    fun isCommentActionOverlayShowing(): Boolean =
-        commentActionOverlay != null || postAsk != null || discussionSummary.visible
+    fun isCommentActionOverlayShowing(): Boolean = commentActionOverlay != null || postAsk != null
 
     fun getVisibleCommentActionId(): Int = commentActionOverlay?.comment?.id ?: -1
 
@@ -580,7 +577,7 @@ class CommentsScreenController private constructor(
     val sheetGesturesBlocked: Boolean
         get() = askOpen || askSurfaceVisible || predictiveBackActive ||
             isCommentActionOverlayShowing() || isLinkPreviewOverlayShowing() ||
-            summarySelectionState.selectedTexts.isNotEmpty()
+            summarySelectionState.selectedTexts.isNotEmpty() || discussionSelectionState.selectedTexts.isNotEmpty()
     var askOpen by mutableStateOf(false)
         private set
     var askBackProgress by mutableFloatStateOf(0f)
@@ -590,8 +587,7 @@ class CommentsScreenController private constructor(
         private set
 
     fun openPostAsk(state: PostAskState) {
-        if (commentActionOverlay != null || postAsk != null) return
-        if (discussionSummary.visible && state.subject !is AskSource.Discussion) return
+        if (isCommentActionOverlayShowing()) return
         postAsk = state
         askOpen = true
         listener.onCommentActionOverlayVisibilityChanged(true)
@@ -609,9 +605,6 @@ class CommentsScreenController private constructor(
     }
 
     fun closeAsk() {
-        if (postAsk?.subject is AskSource.Discussion || (postAsk == null && discussionSummary.visible)) {
-            listener.onDismissDiscussionSummary()
-        }
         askOpen = false
         askBackProgress = 0f
     }
@@ -622,7 +615,7 @@ class CommentsScreenController private constructor(
     }
 
     fun requestDismissCommentActions() {
-        if (askOpen || (postAsk == null && discussionSummary.visible)) {
+        if (askOpen) {
             closeAsk()
             return
         }
@@ -989,8 +982,7 @@ class CommentsScreenController private constructor(
             tintColorArgb: Int,
         ): Int?
         fun onHeaderAction(action: CommentsHeaderAction)
-        fun onSummarizeDiscussion(regenerate: Boolean = false) = Unit
-        fun onDismissDiscussionSummary() = Unit
+        fun onSummarizeDiscussion() = Unit
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)
         fun onSearchResultSelected(comment: PortableCommentItem)

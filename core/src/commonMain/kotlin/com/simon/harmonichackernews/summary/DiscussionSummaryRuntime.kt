@@ -24,15 +24,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class DiscussionSummaryState(
-    val visible: Boolean = false,
     val running: Boolean = false,
     val text: String = "",
     val coverage: DiscussionCoverage? = null,
     val error: String? = null,
     val truncated: Boolean = false,
     val sourceText: String? = null,
-    val progressMessage: String = "Preparing comments…",
-    val inputCharacters: Int = 0,
 )
 
 class DiscussionSummaryRuntime(
@@ -60,18 +57,14 @@ class DiscussionSummaryRuntime(
         }
     }
 
-    fun open(title: String?, body: String?, comments: List<PortableCommentItem>, cached: Boolean, regenerate: Boolean) {
+    fun open(title: String?, body: String?, comments: List<PortableCommentItem>, cached: Boolean) {
         val old = state.value
-        if (old.running) return
-        if (!regenerate && (old.text.isNotBlank() || old.error != null)) {
-            mutableState.value = old.copy(visible = true)
-            return
-        }
+        if (old.running || old.text.isNotBlank()) return
         if (!available()) return
         val request = ++generation
         val mockRequest = mock()
         val config = settings.snapshot()
-        mutableState.value = DiscussionSummaryState(visible = true, running = true)
+        mutableState.value = DiscussionSummaryState(running = true)
         fun update(transform: (DiscussionSummaryState) -> DiscussionSummaryState) {
             if (generation == request) mutableState.value = transform(state.value)
         }
@@ -91,8 +84,7 @@ class DiscussionSummaryRuntime(
                     if (input.text == previousText) throw contextError
                         ?: DiscussionNoOutputException("The AI model did not respond to this request. Try again or choose a faster model.")
                     previousText = input.text
-                    update { it.copy(coverage = input.coverage, inputCharacters = input.text.length,
-                        progressMessage = "Waiting for AI model…") }
+                    update { it.copy(coverage = input.coverage) }
                     var emittedText = false
                     var result: StorySummaryEvent.Success? = null
                     try {
@@ -116,10 +108,7 @@ class DiscussionSummaryRuntime(
                             when (event) {
                                 is StorySummaryEvent.Progress -> {
                                     emittedText = emittedText || event.text.isNotBlank()
-                                    if (event.text.isNotBlank()) update { it.copy(
-                                        text = if (config.streamResponses) event.text else it.text,
-                                        progressMessage = "Generating summary…",
-                                    ) }
+                                    if (config.streamResponses && event.text.isNotBlank()) update { it.copy(text = event.text) }
                                 }
                                 is StorySummaryEvent.Success -> result = event
                                 is StorySummaryEvent.Failure -> throw DiscussionFailure(event.message)
@@ -131,12 +120,10 @@ class DiscussionSummaryRuntime(
                         if (!emittedText && result == null && index < budgets.lastIndex &&
                             AskConversation.isContextLimitError(error.message)) {
                             contextError = error
-                            update { it.copy(progressMessage = "Context too large; trying fewer comments…") }
                             continue
                         }
                         if (!emittedText && result == null && error is DiscussionNoOutputException &&
                             cloud != null && noOutputRetries++ == 0 && index < budgets.lastIndex) {
-                            update { it.copy(progressMessage = "Model did not respond; trying fewer comments…") }
                             continue
                         }
                         throw error
@@ -144,7 +131,7 @@ class DiscussionSummaryRuntime(
                     val complete = result?.takeIf { it.text.isNotBlank() }
                         ?: throw DiscussionFailure("The model returned no summary. Please retry.")
                     update { it.copy(running = false, text = complete.text, truncated = complete.truncated,
-                        sourceText = input.text, progressMessage = "Summary complete") }
+                        sourceText = input.text) }
                     return@launch
                 }
             } catch (cancelled: CancellationException) {
@@ -161,15 +148,9 @@ class DiscussionSummaryRuntime(
                         "The AI provider timed out. Try again or choose a faster model."
                     else -> "Couldn't summarize the discussion. Check your AI settings or try again."
                 }
-                update { it.copy(running = false, error = message, text = "",
-                    progressMessage = "Summary failed") }
+                update { it.copy(running = false, error = message, text = "") }
             }
         }
-    }
-
-    fun dismiss() {
-        if (state.value.running) reset()
-        else mutableState.value = state.value.copy(visible = false)
     }
 
     fun reset() {

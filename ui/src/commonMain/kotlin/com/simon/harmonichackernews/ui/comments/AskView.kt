@@ -81,14 +81,7 @@ internal fun AskSurface(
     val isDiscussion = subject is AskSource.Discussion
     val summary = if (isDiscussion) controller.discussionSummary else null
     val canAskDiscussion = !isDiscussion || (summary?.running == false && summary.error == null && summary.text.isNotBlank())
-    var summaryElapsedSeconds by remember(subject) { mutableIntStateOf(0) }
-    LaunchedEffect(summary?.running) {
-        summaryElapsedSeconds = 0
-        while (summary?.running == true) {
-            delay(1_000)
-            summaryElapsedSeconds++
-        }
-    }
+    val summaryText = post?.summary ?: summary?.text
     val sourceKey = comment?.id ?: subject.story.id
     val baseUrl = if (post != null) subject.story.url else "https://news.ycombinator.com/item?id=$sourceKey"
     val scope = rememberCoroutineScope()
@@ -196,15 +189,15 @@ internal fun AskSurface(
         }
     }
 
-    AskContainer(origin, progress, color, source, sourceCornerRadius = if (post != null) 14.dp else 28.dp,
-        summarySource = post != null) {
+    AskContainer(origin, progress, color, source, sourceCornerRadius = if (summaryText != null) 14.dp else 28.dp,
+        summarySource = summaryText != null) {
         SharedTransitionLayout {
             val sharedQuestions = this
             AskLayout(
                 header = {
                     HarmonicTopAppBar(
                         title = when {
-                            isDiscussion -> "Ask about this discussion"
+                            isDiscussion -> "Discussion"
                             post != null -> "Ask about this post"
                             else -> "Ask about this comment"
                         },
@@ -251,51 +244,6 @@ internal fun AskSurface(
                     item(key = "subject", contentType = "ask-subject") {
                         Column {
                             val linkColor = MaterialTheme.colorScheme.primary
-                            if (summary != null) {
-                                Text(subject.story.title.orEmpty(), style = MaterialTheme.typography.titleMedium)
-                                Spacer(Modifier.height(12.dp))
-                                Text("Discussion summary", color = linkColor, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.height(8.dp))
-                                if (summary.running) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        HarmonicLoadingIndicator(Modifier.size(24.dp))
-                                        Spacer(Modifier.width(10.dp))
-                                        Text("${summary.progressMessage} ${summaryElapsedSeconds}s",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    if (summary.inputCharacters > 0) {
-                                        Text("${summary.coverage?.included ?: 0} comments, " +
-                                            "${summary.inputCharacters} input characters",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    androidx.compose.material3.TextButton(onClick = controller::closeAsk) {
-                                        Text("Cancel summary")
-                                    }
-                                }
-                                summary.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                                if (summary.text.isNotBlank()) SelectionContainer {
-                                    SummaryMarkdownText(summary.text, MaterialTheme.colorScheme.onSurface, linkColor,
-                                        typography.family, typography.commentTextSize.sp,
-                                        (typography.commentTextSize + 2f).sp, onOpenLink = {}, baseUrl = baseUrl,
-                                        enableBoldFormatting = settings.enableSummaryBoldFormatting,
-                                        animateStreamingText = summary.running, animationContentKey = sourceKey)
-                                }
-                                if (summary.error == null) summary.coverage?.let {
-                                    val count = if (it.included == it.eligible) "${it.included}" else "${it.included} of ${it.eligible}"
-                                    val cached = if (it.cached) " (cached)" else ""
-                                    val shortened = if (it.shortened > 0) " Some comments were shortened." else ""
-                                    Text("Based on $count loaded ${if (it.eligible == 1) "comment" else "comments"}$cached.$shortened",
-                                        modifier = Modifier.padding(top = 8.dp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                if (summary.truncated) Text("The model stopped before completing the summary.")
-                                if (!summary.running && controller.canSummarizeDiscussion &&
-                                    !controller.discussionRequestBlocked && !state.running && state.turns.isEmpty()) {
-                                    androidx.compose.material3.TextButton(
-                                        onClick = { controller.listener.onSummarizeDiscussion(regenerate = true) },
-                                    ) { Text(if (summary.error == null) "Regenerate" else "Retry") }
-                                }
-                            } else {
                             val body = remember(comment?.expandedAnchorText, linkColor, onOpenLink) {
                                 htmlAnnotatedString(comment?.expandedAnchorText.orEmpty(), linkColor,
                                     LinkInteractionListener { link -> (link as? LinkAnnotation.Url)?.url?.let(onOpenLink) })
@@ -307,7 +255,7 @@ internal fun AskSurface(
                             Column(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                                    .clickable(role = Role.Button, onClickLabel = if (post != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
+                                    .clickable(role = Role.Button, onClickLabel = if (summaryText != null) "Toggle summary preview" else "Toggle comment preview") { expanded = !expanded }
                                     .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
                                     .padding(12.dp),
                             ) {
@@ -317,12 +265,12 @@ internal fun AskSurface(
                                             modifier = Modifier.size(22.dp))
                                         Spacer(Modifier.width(8.dp))
                                     }
-                                    if (post != null) {
+                                    if (summaryText != null) {
                                         Icon(painterResource(Res.drawable.ic_auto_awesome), null, Modifier.size(18.dp),
                                             tint = MaterialTheme.colorScheme.primary)
                                         Spacer(Modifier.width(8.dp))
                                     }
-                                    Text(if (post != null) "AI summary" else comment?.by ?: "Unknown user", Modifier.weight(1f),
+                                    Text(if (isDiscussion) "Discussion summary" else if (post != null) "AI summary" else comment?.by ?: "Unknown user", Modifier.weight(1f),
                                         color = MaterialTheme.colorScheme.primary, fontFamily = typography.family,
                                         fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Icon(painterResource(Res.drawable.ic_keyboard_arrow_down), null,
@@ -330,7 +278,7 @@ internal fun AskSurface(
                                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
                                 }
                                 Spacer(Modifier.height(6.dp))
-                                if (post != null) {
+                                if (summaryText != null) {
                                     Text(subject.story.title.orEmpty(), fontFamily = typography.family,
                                         fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurface,
@@ -338,7 +286,7 @@ internal fun AskSurface(
                                     Spacer(Modifier.height(6.dp))
                                     AskPreviewText(expanded, lineHeight = 18.sp) { maxLines ->
                                         SummaryMarkdownText(
-                                            markdown = post.summary,
+                                            markdown = summaryText,
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                                             linkColor = linkColor, fontFamily = typography.family,
                                             fontSize = 13.sp, lineHeight = 18.sp, onOpenLink = onOpenLink,
@@ -369,7 +317,6 @@ internal fun AskSurface(
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     fontSize = 13.sp, lineHeight = 18.sp)
                             }
-                            }
                             if (state.omittedTurns > 0) {
                                 Text("Earlier messages are no longer included in the AI’s context. Repeat any details it needs.",
                                     modifier = Modifier.padding(top = 20.dp),
@@ -386,7 +333,7 @@ internal fun AskSurface(
                                 // Include the gap in the shrinking content. An outer spacedBy gap
                                 // disappears in one frame when AnimatedVisibility removes its child.
                                 Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text("What would you like to understand?",
+                                    if (!isDiscussion) Text("What would you like to understand?",
                                         modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                                         color = MaterialTheme.colorScheme.onSurface,
                                         style = MaterialTheme.typography.titleMedium)

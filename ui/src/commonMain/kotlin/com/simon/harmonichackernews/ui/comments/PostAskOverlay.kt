@@ -7,8 +7,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
@@ -19,7 +17,7 @@ import kotlinx.coroutines.flow.first
 data class PostAskState(
     val subject: AskSource,
     val source: GraphicsLayer,
-    val bounds: () -> Rect?,
+    val bounds: () -> Rect,
     val color: () -> Color,
 ) {
     var coveringSource by mutableStateOf(false)
@@ -32,15 +30,6 @@ internal fun PostAskOverlay(
     settings: CommentDisplaySettings,
     onOpenLink: (String) -> Unit,
 ) {
-    val discussionLayer = rememberGraphicsLayer()
-    val surface = MaterialTheme.colorScheme.surface
-    LaunchedEffect(controller, controller.discussionSummary.visible) {
-        if (controller.discussionSummary.visible && controller.postAsk == null) {
-            controller.openPostAsk(PostAskState(
-                AskSource.Discussion(controller.story), discussionLayer, { null }, { surface },
-            ))
-        }
-    }
     val state = controller.postAsk ?: return
     var entered by remember(state) { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
@@ -49,7 +38,7 @@ internal fun PostAskOverlay(
     var rootBounds by remember { mutableStateOf<Rect?>(null) }
     SideEffect {
         controller.askSurfaceVisible = visible
-        state.coveringSource = rootBounds != null && state.subject is AskSource.Post
+        state.coveringSource = rootBounds != null
     }
     LaunchedEffect(controller, progress) {
         snapshotFlow { !controller.askOpen && progress.value == 0f }.first { it }
@@ -60,7 +49,7 @@ internal fun PostAskOverlay(
         AskSurface(
             controller = controller,
             subject = state.subject,
-            origin = state.bounds()?.translate(-root.left, -root.top) ?: Rect.Zero,
+            origin = state.bounds().translate(-root.left, -root.top),
             progress = { progress.value },
             source = state.source,
             settings = settings,

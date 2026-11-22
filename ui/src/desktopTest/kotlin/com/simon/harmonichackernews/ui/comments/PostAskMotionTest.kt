@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +41,7 @@ import kotlin.test.*
 
 class PostAskMotionTest {
     @Test
-    fun pendingDiscussionMountsAnAskHostThatIsGatedLikeAndroid() = SwingUtilities.invokeAndWait {
+    fun inlineDiscussionOpensAskFromItsCardAndReturnsToTheComments() = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("DiscussionAskHostTest")
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val story = StoryListItemSnapshot(StorySnapshot(42, title = "A discussion"), StoryPresentationSnapshot())
@@ -52,8 +54,11 @@ class PostAskMotionTest {
         val scene = ImageComposeScene(400, 800, Density(1f)) {
             HarmonicTheme(palette.colorScheme, palette.dark) {
                 CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
-                    if (controller.isCommentActionOverlayShowing()) {
-                        CommentActionOverlay(controller, settings, false, false, TextStyle.Default, {})
+                    Box(Modifier.fillMaxSize()) {
+                        Box(Modifier.padding(top = 160.dp)) { DiscussionSummaryCard(controller, settings, {}) }
+                        if (controller.isCommentActionOverlayShowing()) {
+                            CommentActionOverlay(controller, settings, false, false, TextStyle.Default, {})
+                        }
                     }
                 }
             }
@@ -62,11 +67,19 @@ class PostAskMotionTest {
             scene.render(0L).close()
             assertNull(controller.postAsk)
             controller.updateContent(CommentsScreenState(story,
-                discussionSummary = DiscussionSummaryState(visible = true, text = "A discussion summary")))
-            assertTrue(controller.isCommentActionOverlayShowing())
+                canSummarizeDiscussion = true, discussionSummary = DiscussionSummaryState(text = "A discussion summary")))
+            assertFalse(controller.isCommentActionOverlayShowing())
             repeat(35) { scene.render((it + 1) * 16_000_000L).close() }
+            scene.sendPointerEvent(PointerEventType.Press, Offset(336f, 196f))
+            scene.sendPointerEvent(PointerEventType.Release, Offset(336f, 196f))
+            repeat(45) { scene.render((it + 36) * 16_000_000L).close() }
             assertIs<AskSource.Discussion>(controller.postAsk?.subject)
+            assertTrue(checkNotNull(controller.postAsk?.bounds?.invoke()).top >= 160f)
             assertTrue(controller.askOpen)
+            controller.closeAsk()
+            repeat(45) { scene.render((it + 81) * 16_000_000L).close() }
+            assertFalse(controller.isCommentActionOverlayShowing())
+            assertEquals("A discussion summary", controller.discussionSummary.text)
         } finally {
             scene.close()
             binding.close()

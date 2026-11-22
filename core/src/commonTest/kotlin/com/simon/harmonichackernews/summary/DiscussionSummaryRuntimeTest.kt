@@ -53,21 +53,20 @@ class DiscussionSummaryRuntimeTest {
             }
         }
         val runtime = DiscussionSummaryRuntime(this, settings, summaries, engine, { false }, dispatcher)
-        runtime.open("Title", null, source, false, false)
-        runtime.open("Title", null, source, false, false)
+        runtime.open("Title", null, source, false)
+        runtime.open("Title", null, source, false)
         advanceUntilIdle()
         assertEquals("Discussion result", runtime.state.value.text)
         assertEquals(2, requests.size)
         assertTrue(requests[1].text.length < requests[0].text.length)
         assertTrue(requests.all { it.preserveInput && !it.useGeminiNanoSummarizationLora })
-        runtime.dismiss()
-        runtime.open("Title", null, source, false, false)
+        runtime.open("Title", null, source, false)
         advanceUntilIdle()
-        assertTrue(runtime.state.value.visible)
+        assertEquals("Discussion result", runtime.state.value.text)
         assertEquals(2, requests.size)
     }
 
-    @Test fun dismissCancelsStreamingRequestAndResetsState() = runTest {
+    @Test fun resetCancelsStreamingRequest() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
         settings.setMode(AiSummaryMode.LOCAL)
@@ -85,13 +84,13 @@ class DiscussionSummaryRuntimeTest {
             }
         }
         val runtime = DiscussionSummaryRuntime(this, settings, summaries, engine, { false }, dispatcher)
-        runtime.open("Title", null, source, true, false)
+        runtime.open("Title", null, source, true)
         advanceUntilIdle()
         assertTrue(runtime.state.value.running)
-        runtime.dismiss()
+        runtime.reset()
         advanceUntilIdle()
         assertTrue(cancelled)
-        assertFalse(runtime.state.value.visible)
+        assertFalse(runtime.state.value.running)
         assertEquals("", runtime.state.value.text)
     }
 
@@ -118,13 +117,12 @@ class DiscussionSummaryRuntimeTest {
         }
         val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher,
             cloudFirstOutputTimeoutMillis = 100)
-        runtime.open("Post", null, comments, false, false)
+        runtime.open("Post", null, comments, false)
         advanceUntilIdle()
         assertEquals(2, lengths.size)
         assertTrue(lengths[1] < lengths[0])
         assertEquals("Recovered on smaller input", runtime.state.value.text)
         assertEquals(null, runtime.state.value.error)
-        assertEquals("Summary complete", runtime.state.value.progressMessage)
     }
 
     @Test fun ninetyOneShortCommentsFailClearlyInsteadOfRepeatedlyWaitingOnSameInput() = runTest {
@@ -149,12 +147,11 @@ class DiscussionSummaryRuntimeTest {
         }
         val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher,
             cloudFirstOutputTimeoutMillis = 100)
-        runtime.open("Post", null, comments, false, false)
+        runtime.open("Post", null, comments, false)
         advanceUntilIdle()
         assertEquals(1, requests)
         assertFalse(runtime.state.value.running)
         assertTrue(runtime.state.value.error.orEmpty().contains("did not respond"))
-        assertTrue(runtime.state.value.inputCharacters > 0)
     }
 
     @Test fun cloudUsesConfiguredProviderAndDoesNotRetryOnceOutputHasStarted() = runTest {
@@ -181,7 +178,7 @@ class DiscussionSummaryRuntimeTest {
             PortableCommentItem(CommentSnapshot(id, parentId = 1, text = "Comment ".repeat(85)),
                 CommentPresentationSnapshot(sortOrder = id))
         }
-        runtime.open("Title", null, largeThread, false, false)
+        runtime.open("Title", null, largeThread, false)
         advanceUntilIdle()
         val config = requests.single()
         assertEquals("configured-model", config.model)

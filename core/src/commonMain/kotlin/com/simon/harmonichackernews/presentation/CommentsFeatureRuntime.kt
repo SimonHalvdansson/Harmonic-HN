@@ -173,16 +173,12 @@ class CommentsFeatureRuntime(
                 (1 until comments.size).any { comments[it].mayHaveDiscussionText() }
             }
 
-    fun openDiscussionSummary(regenerate: Boolean) {
+    fun openDiscussionSummary() {
         val current = story ?: return
-        if (!canSummarizeDiscussion) return
-        if (discussionRequestBlocked && (regenerate ||
-                (discussionSummary.text.isBlank() && discussionSummary.error == null))) return
+        if (!canSummarizeDiscussion || discussionRequestBlocked) return
         discussionRuntime?.open(current.title, current.text, thread.state.value.allComments,
-            presenter.state.value.showingCached, regenerate)
+            presenter.state.value.showingCached)
     }
-
-    fun dismissDiscussionSummary() = discussionRuntime?.dismiss()
 
     val summaryPageTextRetryGeneration: Long?
         get() = summaryRuntime?.state?.value?.generation?.takeIf { summaryPageTextRetryPending }

@@ -392,8 +392,6 @@ class AskConversation(
             is AskSource.Comment -> suggestedQuestions(source.comment)
             is AskSource.Discussion -> listOf(
                 "Where do commenters disagree?",
-                "What are the most useful examples?",
-                "What questions did the discussion leave open?",
             )
             is AskSource.Post -> listOf(
                 "Explain the main idea in simpler terms",

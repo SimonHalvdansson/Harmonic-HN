@@ -23,9 +23,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -126,8 +123,7 @@ fun CommentsHeaderActions(
             CommentsHeaderButton.VOTE -> hasAccount && !combineActions
             CommentsHeaderButton.FAVORITE -> hasAccount
             CommentsHeaderButton.BOOKMARK -> bookmarksEnabled
-            CommentsHeaderButton.SUMMARIZE -> controller.canSummarizeDiscussion ||
-                (story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully)
+            CommentsHeaderButton.SUMMARIZE -> story.isLink && settings.canProvideSummary && !story.summaryGeneratedSuccessfully
             CommentsHeaderButton.SIDE_BY_SIDE -> controller.sideBySideAvailable
             CommentsHeaderButton.OPEN_PARENT -> story.isComment && story.parentId > 0
             CommentsHeaderButton.OPEN_TOP_LEVEL -> story.isComment && story.rootStoryId > 0
@@ -147,8 +143,6 @@ fun CommentsHeaderActions(
             CommentsHeaderButton.FAVORITE -> if (favorited) "Remove favorite" else "Favorite"
             CommentsHeaderButton.BOOKMARK -> if (bookmarked) "Remove bookmark" else "Bookmark"
             CommentsHeaderButton.SIDE_BY_SIDE -> if (controller.sideBySideActive) "Exit side by side" else button.label
-            CommentsHeaderButton.SUMMARIZE -> if (story.isLink && settings.canProvideSummary) button.label
-                else "Summarize discussion"
             else -> button.label
         }
         val icon = when {
@@ -194,11 +188,7 @@ fun CommentsHeaderActions(
                 CommentsHeaderButton.VOTE -> controller.listener.onHeaderAction(CommentsHeaderAction.VOTE)
                 CommentsHeaderButton.FAVORITE -> controller.listener.onHeaderAction(CommentsHeaderAction.FAVORITE)
                 CommentsHeaderButton.BOOKMARK -> controller.listener.onHeaderAction(CommentsHeaderAction.BOOKMARK)
-                CommentsHeaderButton.SUMMARIZE -> if (story.isLink && settings.canProvideSummary) {
-                    controller.listener.onHeaderAction(CommentsHeaderAction.SUMMARIZE)
-                } else {
-                    controller.listener.onSummarizeDiscussion()
-                }
+                CommentsHeaderButton.SUMMARIZE -> controller.listener.onHeaderAction(CommentsHeaderAction.SUMMARIZE)
                 CommentsHeaderButton.SHARE -> shareExpanded = true
                 CommentsHeaderButton.REFRESH -> {
                     controller.beginHeaderRefresh(showProgressInButton = button in inline)
@@ -236,12 +226,7 @@ fun CommentsHeaderActions(
                 exit = fadeOut(tween(80)),
             ) {
                 Box {
-                    HeaderActionButton(action, Modifier.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize), story.id,
-                        onLongClick = if (action.action == CommentsHeaderButton.SUMMARIZE && controller.canSummarizeDiscussion &&
-                            !controller.discussionRequestBlocked) {
-                            { controller.listener.onSummarizeDiscussion() }
-                        } else null,
-                    ) {
+                    HeaderActionButton(action, Modifier.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize), story.id) {
                         onAction(action.action)
                     }
                     if (action.action == CommentsHeaderButton.SHARE) {
@@ -272,10 +257,7 @@ fun CommentsHeaderActions(
                 sortExpanded = sortExpanded,
                 archiveExpanded = archiveExpanded,
                 controller = controller,
-                overflowActions = overflow.filterNot {
-                    it.action == CommentsHeaderButton.SUMMARIZE && !(story.isLink && settings.canProvideSummary)
-                },
-                showDiscussionSummary = !previewCommentActions && controller.canSummarizeDiscussion,
+                overflowActions = overflow,
                 onAction = onAction,
                 onDismiss = dismissMenus,
                 onSubmenuBack = { sortExpanded = false; archiveExpanded = false },
@@ -306,17 +288,20 @@ private fun HeaderActionButton(
     action: HeaderAction,
     modifier: Modifier,
     itemId: Int,
-    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     HarmonicTooltip(action.label) {
-        val content: @Composable () -> Unit = content@{
+        IconButton(
+            onClick = onClick,
+            enabled = !action.loading,
+            modifier = modifier,
+        ) {
             if (action.action == CommentsHeaderButton.BOOKMARK) {
                 AnimatedBookmarkIcon(
                     bookmarked = action.icon == Res.drawable.ic_bookmark_filled,
                     itemId = itemId,
                 )
-                return@content
+                return@IconButton
             }
             AnimatedContent(
                 targetState = HeaderActionVisual(action.icon, action.label, action.loading),
@@ -342,20 +327,6 @@ private fun HeaderActionButton(
                     )
                 }
             }
-        }
-        if (onLongClick == null) {
-            IconButton(onClick = onClick, enabled = !action.loading, modifier = modifier) { content() }
-        } else {
-            Box(
-                modifier.clip(CircleShape).combinedClickable(
-                    enabled = !action.loading,
-                    role = Role.Button,
-                    onClick = onClick,
-                    onLongClickLabel = "Summarize discussion",
-                    onLongClick = onLongClick,
-                ),
-                contentAlignment = Alignment.Center,
-            ) { content() }
         }
     }
 }
@@ -395,7 +366,6 @@ private fun MoreMenu(
     archiveExpanded: Boolean,
     controller: CommentsScreenController,
     overflowActions: List<HeaderAction>,
-    showDiscussionSummary: Boolean,
     onAction: (CommentsHeaderButton) -> Unit,
     onDismiss: () -> Unit,
     onSubmenuBack: () -> Unit,
@@ -484,23 +454,9 @@ private fun MoreMenu(
                     }
 
                     MoreMenuPage.Root -> {
-                        if (showDiscussionSummary) {
-                            DropdownMenuItem(
-                                text = { CommentsMenuText("Summarize discussion") },
-                                leadingIcon = { Icon(painterResource(CommentsHeaderButton.SUMMARIZE.icon), null) },
-                                enabled = !controller.discussionRequestBlocked ||
-                                    controller.discussionSummary.text.isNotBlank() || controller.discussionSummary.error != null,
-                                onClick = {
-                                    onDismiss()
-                                    controller.listener.onSummarizeDiscussion()
-                                },
-                            )
-                        }
                         overflowActions.forEach { item ->
                             DropdownMenuItem(
-                                text = { CommentsMenuText(
-                                    if (item.action == CommentsHeaderButton.SUMMARIZE) "Summarize article" else item.label,
-                                ) },
+                                text = { CommentsMenuText(if (item.action == CommentsHeaderButton.SUMMARIZE) "Summarize article" else item.label) },
                                 leadingIcon = {
                                     if (item.action == CommentsHeaderButton.BOOKMARK) {
                                         AnimatedBookmarkIcon(item.icon == Res.drawable.ic_bookmark_filled, story.id, description = null)

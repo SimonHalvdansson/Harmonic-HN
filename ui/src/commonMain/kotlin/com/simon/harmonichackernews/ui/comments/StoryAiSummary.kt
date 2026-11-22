@@ -56,6 +56,7 @@ import com.simon.harmonichackernews.summary.AskSource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,9 +81,6 @@ fun StoryAiSummary(
     selectionState: SelectionState = rememberSelectionState(),
 ) {
     val summary = story.aiSummaryText.orEmpty()
-    val sourceLayer = rememberGraphicsLayer()
-    val currentContainerColor by rememberUpdatedState(containerColorProvider)
-    var sourceCoordinates by remember(story.id) { mutableStateOf<LayoutCoordinates?>(null) }
     var showInfoDialog by remember(story.id) { mutableStateOf(false) }
     val policyBlocked = !story.summaryGeneratedSuccessfully &&
         summary == GEMINI_NANO_POLICY_BLOCKED_MESSAGE
@@ -95,72 +93,16 @@ fun StoryAiSummary(
         enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
         exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .animateContentSize(
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                    alignment = Alignment.TopStart,
-                )
-                .onGloballyPositioned { sourceCoordinates = it }
-                .drawWithContent {
-                    // Keep recording the themed foreground while Ask owns the visible surface,
-                    // so the reverse transform returns to the current summary without a flash.
-                    if (askVisible) clipRect(0f, 0f, 0f, 0f) { this@drawWithContent.drawContent() }
-                    else drawContent()
-                }
-                .clip(RoundedCornerShape(14.dp))
-                .drawBehind { drawRect(currentContainerColor()) }
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
-                .drawWithContent {
-                    sourceLayer.record { this@drawWithContent.drawContent() }
-                    drawLayer(sourceLayer)
-                }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_auto_awesome),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(end = 7.dp)
-                        .size(18.dp),
-                )
-                Text(
-                    "Summary",
-                    fontSize = 15.sp,
-                    lineHeight = 20.sp,
-                    fontFamily = typography.family,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.weight(1f))
-                if (onAsk != null && !policyBlocked) {
-                    val canAsk = story.summaryGeneratedSuccessfully && !streaming && summary.isNotBlank()
-                    val askAlpha by animateFloatAsState(
-                        targetValue = if (canAsk) 1f else 0f,
-                        animationSpec = tween(120),
-                        label = "Summary Ask visibility",
-                    )
-                    TextButton(modifier = Modifier.height(32.dp)
-                        .graphicsLayer { alpha = askAlpha }
-                        .then(if (canAsk) Modifier else Modifier.clearAndSetSemantics {}),
-                        enabled = canAsk,
-                        contentPadding = PaddingValues(horizontal = 12.dp), onClick = {
-                        onAsk(PostAskState(
-                            subject = AskSource.Post(story, summary, story.aiSummarySourceText),
-                            source = sourceLayer,
-                            bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() },
-                            color = { currentContainerColor() },
-                        ))
-                    }) {
-                        Text("Ask", fontFamily = typography.family, fontWeight = FontWeight.Bold)
-                    }
-                }
+        SummaryCard(
+            title = "Summary",
+            subjectKey = story.id,
+            subject = if (story.summaryGeneratedSuccessfully && !streaming)
+                AskSource.Post(story, summary, story.aiSummarySourceText) else null,
+            fontFamily = typography.family,
+            onAsk = onAsk.takeUnless { policyBlocked },
+            askVisible = askVisible,
+            containerColorProvider = containerColorProvider,
+            headerAction = {
                 if (settings.showAdditionalSummaryInfo) {
                     IconButton(
                         onClick = { showInfoDialog = true },
@@ -174,7 +116,8 @@ fun StoryAiSummary(
                         )
                     }
                 }
-            }
+            },
+        ) {
             if (policyBlocked) {
                 val iconTopPadding = with(LocalDensity.current) {
                     (((typography.commentTextSize + 2f).sp.toDp() - 18.dp) / 2).coerceAtLeast(0.dp)
@@ -232,6 +175,94 @@ fun StoryAiSummary(
             streaming = streaming,
             onDismiss = { showInfoDialog = false },
         )
+    }
+}
+
+@Composable
+internal fun SummaryCard(
+    title: String,
+    subjectKey: Int,
+    subject: AskSource?,
+    fontFamily: FontFamily?,
+    onAsk: ((PostAskState) -> Unit)?,
+    askVisible: Boolean,
+    containerColorProvider: () -> Color,
+    headerAction: @Composable () -> Unit = {},
+    content: @Composable () -> Unit,
+) {
+    val sourceLayer = rememberGraphicsLayer()
+    val currentContainerColor by rememberUpdatedState(containerColorProvider)
+    var sourceCoordinates by remember(subjectKey) { mutableStateOf<LayoutCoordinates?>(null) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .animateContentSize(
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                alignment = Alignment.TopStart,
+            )
+            .onGloballyPositioned { sourceCoordinates = it }
+            .drawWithContent {
+                // Keep recording the themed foreground while Ask owns the visible surface,
+                // so the reverse transform returns to the current summary without a flash.
+                if (askVisible) clipRect(0f, 0f, 0f, 0f) { this@drawWithContent.drawContent() }
+                else drawContent()
+            }
+            .clip(RoundedCornerShape(14.dp))
+            .drawBehind { drawRect(currentContainerColor()) }
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+            .drawWithContent {
+                sourceLayer.record { this@drawWithContent.drawContent() }
+                drawLayer(sourceLayer)
+            }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_auto_awesome),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 7.dp)
+                    .size(18.dp),
+            )
+            Text(
+                title,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.weight(1f))
+            if (onAsk != null) {
+                val canAsk = subject != null
+                val askAlpha by animateFloatAsState(
+                    targetValue = if (canAsk) 1f else 0f,
+                    animationSpec = tween(120),
+                    label = "Summary Ask visibility",
+                )
+                TextButton(modifier = Modifier.height(32.dp)
+                    .graphicsLayer { alpha = askAlpha }
+                    .then(if (canAsk) Modifier else Modifier.clearAndSetSemantics {}),
+                    enabled = canAsk,
+                    contentPadding = PaddingValues(horizontal = 12.dp), onClick = {
+                    val origin = sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() ?: return@TextButton
+                    onAsk(PostAskState(
+                        subject = subject ?: return@TextButton,
+                        source = sourceLayer,
+                        bounds = { sourceCoordinates?.takeIf { it.isAttached }?.boundsInWindow() ?: origin },
+                        color = { currentContainerColor() },
+                    ))
+                }) {
+                    Text("Ask", fontFamily = fontFamily, fontWeight = FontWeight.Bold)
+                }
+            }
+            headerAction()
+        }
+        content()
     }
 }
 
