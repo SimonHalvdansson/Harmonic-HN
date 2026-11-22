@@ -27,7 +27,7 @@ internal fun DiscussionSummaryCard(
         subjectKey = story.id,
         subject = if (!summary.running) AskSource.Discussion(story) else null,
         fontFamily = typography.family,
-        onAsk = controller::openPostAsk,
+        onAsk = if (controller.canSummarizeDiscussion) controller::openPostAsk else null,
         askVisible = controller.postAsk?.let { it.coveringSource && it.subject is AskSource.Discussion } == true,
         containerColorProvider = { color },
     ) {

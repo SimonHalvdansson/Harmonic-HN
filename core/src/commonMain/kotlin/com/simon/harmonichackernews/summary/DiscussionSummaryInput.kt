@@ -13,32 +13,39 @@ private val placeholders = setOf("[deleted]", "[removed]", "[dead]", "[flagged]"
 internal fun PortableCommentItem.mayHaveDiscussionText(): Boolean =
     id > 0 && !text.isNullOrBlank() && text.orEmpty().trim().lowercase() !in placeholders
 
-internal fun prepareDiscussionSummary(
-    title: String?,
-    body: String?,
+internal data class DiscussionComment(val id: Int, val parent: Int, val text: String) {
+    fun encode() = """{"id":$id,"parent_id":$parent,"text":${JsonPrimitive(text)}}"""
+}
+
+internal fun readableDiscussionComments(
     comments: List<PortableCommentItem>,
-    cached: Boolean,
-    limit: Int,
-    checkActive: () -> Unit = {},
-): DiscussionSummaryInput? {
-    data class Entry(val id: Int, val parent: Int, val text: String) {
-        fun encode() = """{"id":$id,"parent_id":$parent,"text":${JsonPrimitive(text)}}"""
-    }
-    fun clip(text: String, max: Int): String {
-        if (text.length <= max) return text
-        val end = text.lastIndexOf(' ', max).takeIf { it >= max / 2 } ?: max
-        return text.take(if (text[end - 1].isHighSurrogate()) end - 1 else end).trimEnd()
-    }
+    checkActive: () -> Unit,
+): List<DiscussionComment> {
     val seen = mutableSetOf<Int>()
-    val entries = comments.asSequence().drop(1)
+    return comments.asSequence().drop(1)
         .filter { it.mayHaveDiscussionText() }
         .sortedWith(compareBy(PortableCommentItem::sortOrder, PortableCommentItem::id))
         .mapNotNull {
             checkActive()
             val text = HtmlTextUtils.plainText(it.text).trim()
             if (text.isEmpty() || text.lowercase() in placeholders || !seen.add(it.id)) null
-            else Entry(it.id, it.parent, text)
+            else DiscussionComment(it.id, it.parent, text)
         }.toList()
+}
+
+internal fun prepareDiscussionSummary(
+    title: String?,
+    body: String?,
+    entries: List<DiscussionComment>,
+    cached: Boolean,
+    limit: Int,
+    checkActive: () -> Unit = {},
+): DiscussionSummaryInput? {
+    fun clip(text: String, max: Int): String {
+        if (text.length <= max) return text
+        val end = text.lastIndexOf(' ', max).takeIf { it >= max / 2 } ?: max
+        return text.take(if (text[end - 1].isHighSurrogate()) end - 1 else end).trimEnd()
+    }
     if (entries.isEmpty()) return null
     val prefix = """{"post_title":${JsonPrimitive(clip(HtmlTextUtils.plainText(title), 240))},"post_body":${JsonPrimitive(clip(HtmlTextUtils.plainText(body), 400))},"comments":["""
     val suffix = "]}"
@@ -56,20 +63,20 @@ internal fun prepareDiscussionSummary(
         chosen.clear()
         length = prefix.length + suffix.length
         val byId = entries.associateBy { it.id }
-        fun takeRanked(entry: Entry, ceiling: Int = limit) {
+        fun takeRanked(entry: DiscussionComment, ceiling: Int = limit) {
             checkActive()
             if (entry.id in chosen || (entry.parent in byId && entry.parent !in chosen)) return
             val text = clip(entry.text, (limit / 8).coerceIn(120, 1600))
             val row = entry.copy(text = text).encode()
             if (take(entry.id, row, ceiling) && text != entry.text) shortened++
         }
-        // Reserve some room for other top-level viewpoints, then spend the rest in HN rank order.
+        // Reserve some room for other top-level viewpoints, then spend the rest in the loaded thread order.
         val rootCeiling = length + (limit - length) / 3
         entries.asSequence().filter { it.parent !in byId }.forEach { takeRanked(it, rootCeiling) }
         entries.forEach { takeRanked(it) }
     }
     if (chosen.isEmpty()) return null
-    // The serialization order remains HN's, not the order of the reservation pass.
+    // Serialize the selected rows in their original thread order.
     return DiscussionSummaryInput(
         entries.mapNotNull { chosen[it.id] }.joinToString(",", prefix, suffix),
         DiscussionCoverage(entries.size, chosen.size, shortened, cached),

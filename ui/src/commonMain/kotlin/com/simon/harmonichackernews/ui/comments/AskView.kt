@@ -80,7 +80,8 @@ internal fun AskSurface(
     val post = subject as? AskSource.Post
     val isDiscussion = subject is AskSource.Discussion
     val summary = if (isDiscussion) controller.discussionSummary else null
-    val canAskDiscussion = !isDiscussion || (summary?.running == false && summary.error == null && summary.text.isNotBlank())
+    val canAskDiscussion = !isDiscussion || (controller.canSummarizeDiscussion &&
+        summary?.running == false && summary.error == null && summary.text.isNotBlank())
     val summaryText = post?.summary ?: summary?.text
     val sourceKey = comment?.id ?: subject.story.id
     val baseUrl = if (post != null) subject.story.url else "https://news.ycombinator.com/item?id=$sourceKey"

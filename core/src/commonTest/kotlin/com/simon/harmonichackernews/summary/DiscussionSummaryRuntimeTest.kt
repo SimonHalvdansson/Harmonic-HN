@@ -66,7 +66,55 @@ class DiscussionSummaryRuntimeTest {
         assertEquals(2, requests.size)
     }
 
-    @Test fun resetCancelsStreamingRequest() = runTest {
+    @Test fun refreshPreservesEquivalentInputAndInvalidatesEditedComments() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        val runtime = DiscussionSummaryRuntime(this, settings, summaries, null, { true }, dispatcher)
+        runtime.open("Post", null, source, true)
+        advanceUntilIdle()
+        val original = runtime.state.value
+        assertTrue(original.text.isNotBlank())
+        val reordered = source.take(1) + source.drop(1).reversed().map {
+            it.copy(presentation = it.presentation.copy(expanded = !it.expanded))
+        }
+        runtime.invalidateIfSourceChanged("Post", null, reordered)
+        assertEquals(original, runtime.state.value)
+        val last = source.last()
+        val updated = source.dropLast(1) + last.copy(comment = last.comment.copy(text = "An edited reply"))
+        runtime.invalidateIfSourceChanged("Post", null, updated)
+        assertEquals(DiscussionSummaryState(), runtime.state.value)
+        runtime.open("Post", null, updated, false)
+        advanceUntilIdle()
+        assertTrue(runtime.state.value.sourceText.orEmpty().contains("An edited reply"))
+    }
+
+    @Test fun smallCloudContextRetriesWithDistinctInputsDownToTwoThousandCharacters() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.CLOUD)
+        settings.setModel("small-model")
+        settings.setText(AiSummaryTextSetting.API_KEY, "test-key")
+        val lengths = mutableListOf<Int>()
+        val cloud = SummaryUseCase(object : CloudSummaryRepository {
+            override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = error("Not used")
+            override suspend fun extractMainContent(url: String): String = error("Not used")
+            override fun summarize(config: CloudSummaryConfig, text: String?) = flow {
+                val length = checkNotNull(text).length
+                lengths += length
+                if (length > 2_000) error("Context limit")
+                emit(CloudSummaryEvent.Success("Fits"))
+            }
+        })
+        val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher)
+        runtime.open("Title", null, source, false)
+        advanceUntilIdle()
+        assertEquals("Fits", runtime.state.value.text)
+        assertTrue(lengths.first() in 2_001..14_999)
+        assertTrue(lengths.last() <= 2_000)
+        assertTrue(lengths.zipWithNext().all { (a, b) -> b < a })
+    }
+
+    @Test fun contentChangeCancelsStreamingRequest() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
         settings.setMode(AiSummaryMode.LOCAL)
@@ -87,7 +135,7 @@ class DiscussionSummaryRuntimeTest {
         runtime.open("Title", null, source, true)
         advanceUntilIdle()
         assertTrue(runtime.state.value.running)
-        runtime.reset()
+        runtime.invalidateIfSourceChanged("Title", null, source.dropLast(1))
         advanceUntilIdle()
         assertTrue(cancelled)
         assertFalse(runtime.state.value.running)

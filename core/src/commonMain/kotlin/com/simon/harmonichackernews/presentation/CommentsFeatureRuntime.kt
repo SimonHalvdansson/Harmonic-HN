@@ -790,6 +790,8 @@ class CommentsFeatureRuntime(
                     story?.let(publishStoryUpdate)
                 }
                 if (effect.contentApplied) {
+                    discussionRuntime?.invalidateIfSourceChanged(story?.title, story?.text, thread.state.value.allComments)
+                    if (!presenter.isCurrentThreadLoad(effect.requestId, effect.storyId)) return
                     reconcileSettings()
                     platform(CommentsPlatformEffect.ReloadLinkPreviews)
                     reloadPollOptions()

@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.summary.AskSource
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.summary.DiscussionSummaryState
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
@@ -334,6 +335,7 @@ class CommentsScreenController private constructor(
         // all three thread lists here made every load and state change allocate and traverse the
         // full thread again on the UI thread.
         screenState = state
+        if (postAsk?.subject is AskSource.Discussion && state.discussionSummary.text.isBlank()) closeAsk()
         interactionStore.updateTopInset(state.topInsetPx)
         interactionStore.synchronizeCommentActionState(
             favoriteLoadingId = state.commentFavoriteLoadingId,

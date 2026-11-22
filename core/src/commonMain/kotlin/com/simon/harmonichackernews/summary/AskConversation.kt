@@ -166,6 +166,12 @@ class AskConversation(
                         if (source is AskSource.Post) {
                             mutableState.update { it.copy(articleIncluded = includeArticle) }
                         }
+                        if (discussionSource != null) {
+                            check(discussionSource.text.isNotBlank() && discussionSource == discussionContext()) {
+                                "The discussion has changed. Summarize it again to ask a follow-up."
+                            }
+                        }
+                        check(settings.snapshot().explicitlyEnabled != false) { "AI features are turned off." }
                         if (config.mode == AiSummaryMode.LOCAL) {
                             val engine = localEngine ?: error("No local AI model is available. Configure AI in Settings.")
                             engine.summarizeEvents(SummaryRequest(

@@ -19,6 +19,24 @@ import kotlin.test.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostAskTest {
     @Test
+    fun disablingAiPreventsCloudFollowUpsFromAnOpenDiscussion() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.CLOUD)
+        settings.setEnabled(true)
+        val repository = Repository()
+        val source = AskSource.Discussion(StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()))
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(repository), settings, null, source,
+            contextDispatcher = dispatcher, discussionContext = { DiscussionSummaryState(text = "Existing summary") })
+
+        settings.setEnabled(false)
+        conversation.ask("What did I miss?")
+        advanceUntilIdle()
+        assertTrue(repository.requests.isEmpty())
+        assertEquals("AI features are turned off.", conversation.state.value.error)
+    }
+
+    @Test
     fun discussionFollowUpUsesRankedCommentsAndFallsBackToSummaryOnContextLimit() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
