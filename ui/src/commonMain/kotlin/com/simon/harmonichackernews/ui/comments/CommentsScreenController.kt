@@ -15,7 +15,9 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import com.simon.harmonichackernews.adapters.CommentDisplaySettings
 import com.simon.harmonichackernews.presentation.*
 import com.simon.harmonichackernews.network.StoryPreviewResourceState
+import com.simon.harmonichackernews.summary.AskSource
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
+import com.simon.harmonichackernews.summary.DiscussionSummaryState
 import com.simon.harmonichackernews.utils.CollectedReferenceLinks
 
 /** One immutable rendering snapshot shared by Android, desktop, and iOS comments screens. */
@@ -54,6 +56,9 @@ data class CommentsScreenState(
     val pollVoteInFlightOptionId: Int? = null,
     val storySummaryLoading: Boolean = false,
     val summaryDiagnostics: StorySummaryDiagnostics? = null,
+    val discussionSummary: DiscussionSummaryState = DiscussionSummaryState(),
+    val canSummarizeDiscussion: Boolean = false,
+    val discussionRequestBlocked: Boolean = false,
     val headerPreviewResource: StoryPreviewResourceState? = null,
     val commentFavoriteLoadingId: Int = -1,
     val commentVoteLoadingId: Int = -1,
@@ -99,6 +104,7 @@ class CommentsScreenController private constructor(
     val story: StoryListItemSnapshot get() = screenState.story
     /** Hosts observe selection so text-selection drags cannot also move the comments sheet. */
     val summarySelectionState = SelectionState()
+    val discussionSelectionState = SelectionState()
     val accountUser: String? get() = screenState.accountUser
     val comments: List<PortableCommentItem> get() = screenState.comments
     val visibleComments: List<PortableVisibleComment> get() = screenState.visibleComments
@@ -128,6 +134,9 @@ class CommentsScreenController private constructor(
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
     val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId
     val storySummaryLoading: Boolean get() = screenState.storySummaryLoading
+    val discussionSummary: DiscussionSummaryState get() = screenState.discussionSummary
+    val canSummarizeDiscussion: Boolean get() = screenState.canSummarizeDiscussion
+    val discussionRequestBlocked: Boolean get() = screenState.discussionRequestBlocked
     val summaryDiagnostics: StorySummaryDiagnostics?
         get() = screenState.summaryDiagnostics
     val headerPreviewResource: StoryPreviewResourceState?
@@ -326,6 +335,7 @@ class CommentsScreenController private constructor(
         // all three thread lists here made every load and state change allocate and traverse the
         // full thread again on the UI thread.
         screenState = state
+        if (postAsk?.subject is AskSource.Discussion && state.discussionSummary.text.isBlank()) closeAsk()
         interactionStore.updateTopInset(state.topInsetPx)
         interactionStore.synchronizeCommentActionState(
             favoriteLoadingId = state.commentFavoriteLoadingId,
@@ -569,7 +579,7 @@ class CommentsScreenController private constructor(
     val sheetGesturesBlocked: Boolean
         get() = askOpen || askSurfaceVisible || predictiveBackActive ||
             isCommentActionOverlayShowing() || isLinkPreviewOverlayShowing() ||
-            summarySelectionState.selectedTexts.isNotEmpty()
+            summarySelectionState.selectedTexts.isNotEmpty() || discussionSelectionState.selectedTexts.isNotEmpty()
     var askOpen by mutableStateOf(false)
         private set
     var askBackProgress by mutableFloatStateOf(0f)
@@ -974,6 +984,7 @@ class CommentsScreenController private constructor(
             tintColorArgb: Int,
         ): Int?
         fun onHeaderAction(action: CommentsHeaderAction)
+        fun onSummarizeDiscussion() = Unit
         fun onShareAction(action: CommentsShareAction)
         fun onMoreAction(action: CommentsMoreAction)
         fun onSearchResultSelected(comment: PortableCommentItem)

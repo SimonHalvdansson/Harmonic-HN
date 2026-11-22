@@ -19,6 +19,55 @@ import kotlin.test.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostAskTest {
     @Test
+    fun disablingAiPreventsCloudFollowUpsFromAnOpenDiscussion() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.CLOUD)
+        settings.setEnabled(true)
+        val repository = Repository()
+        val source = AskSource.Discussion(StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()))
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(repository), settings, null, source,
+            contextDispatcher = dispatcher, discussionContext = { DiscussionSummaryState(text = "Existing summary") })
+
+        settings.setEnabled(false)
+        conversation.ask("What did I miss?")
+        advanceUntilIdle()
+        assertTrue(repository.requests.isEmpty())
+        assertEquals("AI features are turned off.", conversation.state.value.error)
+    }
+
+    @Test
+    fun discussionFollowUpUsesRankedCommentsAndFallsBackToSummaryOnContextLimit() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
+        settings.setMode(AiSummaryMode.LOCAL)
+        val requests = mutableListOf<SummaryRequest>()
+        val engine = object : LocalSummaryEngine {
+            override suspend fun isAvailable() = true
+            override suspend fun summarize(request: SummaryRequest): SummaryResult {
+                requests += request
+                if (requests.size == 1) error("Context limit")
+                return SummaryResult("A discussion answer")
+            }
+        }
+        val source = AskSource.Discussion(StoryListItemSnapshot(StorySnapshot(42), StoryPresentationSnapshot()))
+        val conversation = AskConversation(this, noNetwork, SummaryUseCase(Repository()), settings, engine, source,
+            contextDispatcher = dispatcher,
+            discussionContext = {
+                DiscussionSummaryState(text = "Summary of the disagreement",
+                    sourceText = """{"comments":[{"id":43,"parent_id":42,"text":"Ranked comment"}]}""")
+            })
+        conversation.ask("What do they disagree on?")
+        advanceUntilIdle()
+        assertEquals("A discussion answer", conversation.state.value.turns.single().answer)
+        assertEquals(2, requests.size)
+        assertTrue(requests.first().text.contains("Ranked comment"))
+        assertFalse(requests.last().text.contains("Ranked comment"))
+        assertTrue(requests.last().text.contains("Summary of the disagreement"))
+        assertTrue(requests.all { it.prompt.orEmpty().contains("discussion_summary") })
+    }
+
+    @Test
     fun truncatedAnswersStayVisibleButAreNotIncludedAsCompleteHistory() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)

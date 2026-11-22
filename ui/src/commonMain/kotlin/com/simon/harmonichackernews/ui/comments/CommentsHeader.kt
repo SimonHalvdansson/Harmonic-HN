@@ -8,6 +8,7 @@ import com.simon.harmonichackernews.settings.CommentsHeaderButton
 
 import com.simon.harmonichackernews.ui.navigation.LocalBrowserPaneControls
 import com.simon.harmonichackernews.ui.theme.pageBackground
+import com.simon.harmonichackernews.summary.AskSource
 import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.presentation.CommentsSheetAction
 import androidx.compose.animation.AnimatedContent
@@ -597,7 +598,7 @@ fun CommentsHeader(
                                     streaming = controller.storySummaryLoading,
                                     containerColorProvider = summaryContainerColor,
                                     onAsk = controller::openPostAsk,
-                                    askVisible = controller.postAsk?.coveringSource == true,
+                                    askVisible = controller.postAsk?.let { it.coveringSource && it.subject is AskSource.Post } == true,
                                     selectionState = controller.summarySelectionState,
                                 )
                             }
@@ -687,6 +688,7 @@ fun CommentsHeader(
             .commentsHeaderFade(edgeStyle, visibleHeaderBackground))
         Column(Modifier.windowInsetsPadding(contentWindowInsets).commentsReadingWidth()
             .then(horizontalContentPadding)) {
+            DiscussionSummaryCard(controller, settings, previewPlatform.openLink)
             OpFilterBanner(controller)
             CommentsHeaderStatus(controller = controller, lastRefreshedText = lastRefreshedText)
         }

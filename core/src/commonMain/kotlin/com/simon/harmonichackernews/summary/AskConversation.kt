@@ -16,7 +16,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.*
 
-/** A conversation over a captured post or comment source; no article retrieval or AI tool calls. */
+/** A conversation over a post, comment, or discussion source; no article retrieval or AI tool calls. */
 class AskConversation(
     private val scope: CoroutineScope,
     private val api: HackerNewsApi,
@@ -27,6 +27,7 @@ class AskConversation(
     private val mockAnswers: () -> Boolean = { false },
     private val builtInModelSelected: () -> Boolean = { false },
     private val contextDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val discussionContext: () -> DiscussionSummaryState = { DiscussionSummaryState() },
 ) {
     data class Turn(
         val question: String,
@@ -67,7 +68,8 @@ class AskConversation(
     private var includeArticle = articleText != null
 
     fun generateSuggestedQuestions() {
-        if (suggestionsAttempted || suggestionJob?.isActive == true || state.value.turns.isNotEmpty()) return
+        if (source is AskSource.Discussion || suggestionsAttempted || suggestionJob?.isActive == true ||
+            state.value.turns.isNotEmpty()) return
         val requestGeneration = ++suggestionGeneration
         suggestionJob = scope.launch {
             try {
@@ -136,11 +138,14 @@ class AskConversation(
                 val config = settings.awaitSnapshot()
                 val allTurns = state.value.turns
                 val reserveDiscussionSpace = allTurns.none { it.complete }
+                val discussionSource = if (source is AskSource.Discussion) discussionContext() else null
+                var includeDiscussionComments = discussionSource?.sourceText != null
                 while (true) {
                     val turns = allTurns.drop(firstIncludedTurn)
                     try {
                         val input = withContext(contextDispatcher) {
-                            val source = answerContext()
+                            val source = if (discussionSource == null) answerContext()
+                                else discussionAnswerContext(discussionSource, includeDiscussionComments)
                             buildJsonObject {
                                 put("source_context", source)
                                 put("conversation", buildJsonArray {
@@ -161,6 +166,12 @@ class AskConversation(
                         if (source is AskSource.Post) {
                             mutableState.update { it.copy(articleIncluded = includeArticle) }
                         }
+                        if (discussionSource != null) {
+                            check(discussionSource.text.isNotBlank() && discussionSource == discussionContext()) {
+                                "The discussion has changed. Summarize it again to ask a follow-up."
+                            }
+                        }
+                        check(settings.snapshot().explicitlyEnabled != false) { "AI features are turned off." }
                         if (config.mode == AiSummaryMode.LOCAL) {
                             val engine = localEngine ?: error("No local AI model is available. Configure AI in Settings.")
                             engine.summarizeEvents(SummaryRequest(
@@ -200,6 +211,10 @@ class AskConversation(
                         if (error is CancellationException) throw error
                         val oversized = error is DiscussionContextLimitException || isContextLimitError(error.message)
                         if (!oversized || state.value.turns.last().answer.isNotEmpty()) throw error
+                        if (includeDiscussionComments) {
+                            includeDiscussionComments = false
+                            continue
+                        }
                         // Keep useful source text before falling back to the summary. Local models
                         // preflight with their tokenizer; cloud providers report capacity errors.
                         if (includeArticle) {
@@ -295,6 +310,26 @@ class AskConversation(
         ))
     }
 
+    private fun discussionAnswerContext(summary: DiscussionSummaryState, includeComments: Boolean): JsonObject =
+        buildJsonObject {
+            put("post_title", plain(source.story.title.orEmpty()))
+            put("discussion_summary", summary.text)
+            if (includeComments) {
+                val rows = (Json.parseToJsonElement(checkNotNull(summary.sourceText)) as? JsonObject)
+                    ?.get("comments") as? JsonArray
+                var remaining = 12_000
+                put("comment_excerpt", buildJsonArray {
+                    rows.orEmpty().forEach { row ->
+                        val size = row.toString().length + 1
+                        if (size <= remaining) {
+                            add(row)
+                            remaining -= size
+                        }
+                    }
+                })
+            }
+        }
+
     private suspend fun loadContext(): JsonObject {
         if (source is AskSource.Post) {
             mutableState.update { it.copy(contextReady = true) }
@@ -349,11 +384,21 @@ class AskConversation(
     private fun plain(html: String) = Ksoup.parse(html).text()
 
     private val prompt: String
-        get() = if (source is AskSource.Post) POST_PROMPT else COMMENT_PROMPT
+        get() = when (source) {
+            is AskSource.Post -> POST_PROMPT
+            is AskSource.Comment -> COMMENT_PROMPT
+            is AskSource.Discussion -> RESPONSE_STYLE +
+                "Answer about the Hacker News discussion, using comment_excerpt when included and " +
+                "discussion_summary for wider context. Neither is guaranteed to cover every comment. " +
+                "The linked article is not included."
+        }
 
     companion object {
         fun suggestedQuestions(source: AskSource): List<String> = when (source) {
             is AskSource.Comment -> suggestedQuestions(source.comment)
+            is AskSource.Discussion -> listOf(
+                "Where do commenters disagree?",
+            )
             is AskSource.Post -> listOf(
                 "Explain the main idea in simpler terms",
                 "What are the practical implications?",

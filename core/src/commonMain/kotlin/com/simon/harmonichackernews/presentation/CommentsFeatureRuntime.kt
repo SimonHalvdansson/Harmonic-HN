@@ -25,6 +25,9 @@ import com.simon.harmonichackernews.settings.ReadingPreferences
 import com.simon.harmonichackernews.settings.StoryPreviewTintState
 import com.simon.harmonichackernews.settings.UserSettings
 import com.simon.harmonichackernews.summary.AiSummaryAvailabilityPolicy
+import com.simon.harmonichackernews.summary.DiscussionSummaryRuntime
+import com.simon.harmonichackernews.summary.DiscussionSummaryState
+import com.simon.harmonichackernews.summary.mayHaveDiscussionText
 import com.simon.harmonichackernews.summary.LOCAL_SUMMARY_ARTICLE_TOO_SHORT
 import com.simon.harmonichackernews.summary.StorySummaryDiagnostics
 import com.simon.harmonichackernews.summary.StorySummaryInput
@@ -97,6 +100,7 @@ class CommentsFeatureRuntime(
     private val summarySettings: AiSummarySettingsRepository? = null,
     private val localSummaryAvailable: () -> Boolean = { false },
     private val summaryRuntime: StorySummaryRuntime? = null,
+    private val discussionRuntime: DiscussionSummaryRuntime? = null,
     private val canLoadArticleTextOnDemand: Boolean = false,
     private val loadCachedStoryHeader: suspend (Int) -> CachedStoryHeader? = { null },
     private val hasViewedComments: (Int) -> Boolean = { false },
@@ -140,6 +144,7 @@ class CommentsFeatureRuntime(
     private var hasAccount = false
     private var presentationCapabilities: CommentsPresentationCapabilities? = null
     private var automaticSummaryRequested = false
+    private var automaticSummaryDeferred = false
     private var summaryPageTextRetryAttempted = false
     private var summaryPageTextRetryPending = false
 
@@ -155,6 +160,25 @@ class CommentsFeatureRuntime(
 
     val summaryDiagnostics: StorySummaryDiagnostics?
         get() = summaryRuntime?.state?.value?.diagnostics
+
+    val discussionSummary: DiscussionSummaryState
+        get() = discussionRuntime?.state?.value ?: DiscussionSummaryState()
+
+    val discussionRequestBlocked: Boolean
+        get() = summaryLoading && summarySettings?.snapshot()?.mode == AiSummaryMode.LOCAL
+
+    val canSummarizeDiscussion: Boolean
+        get() = story?.isComment == false && discussionRuntime?.available() == true &&
+            thread.state.value.allComments.let { comments ->
+                (1 until comments.size).any { comments[it].mayHaveDiscussionText() }
+            }
+
+    fun openDiscussionSummary() {
+        val current = story ?: return
+        if (!canSummarizeDiscussion || discussionRequestBlocked) return
+        discussionRuntime?.open(current.title, current.text, thread.state.value.allComments,
+            presenter.state.value.showingCached)
+    }
 
     val summaryPageTextRetryGeneration: Long?
         get() = summaryRuntime?.state?.value?.generation?.takeIf { summaryPageTextRetryPending }
@@ -180,6 +204,18 @@ class CommentsFeatureRuntime(
         summaryRuntime?.let { runtime ->
             scope.launch { runtime.state.collect(::applySummaryState) }
         }
+        discussionRuntime?.let { runtime ->
+            scope.launch {
+                runtime.state.collect { state ->
+                    state.error?.let { platform(CommentsPlatformEffect.ShowMessage(it)) }
+                    if (!state.running && automaticSummaryDeferred) {
+                        automaticSummaryDeferred = false
+                        requestAutomaticSummaryIfEligible()
+                    }
+                    changed()
+                }
+            }
+        }
         previewResourceRuntime?.let { runtime ->
             scope.launch { runtime.states.drop(1).collect { changed() } }
         }
@@ -196,6 +232,8 @@ class CommentsFeatureRuntime(
         cancelPendingHeader()
         initialThreadCached = !sessionState.commentsLoaded && isThreadCached(initialStory.id)
         if (!restoring) {
+            automaticSummaryDeferred = false
+            discussionRuntime?.reset()
             automaticSummaryRequested = false
             summaryPageTextRetryAttempted = false
             summaryPageTextRetryPending = false
@@ -592,6 +630,7 @@ class CommentsFeatureRuntime(
     fun requestSummary() {
         val currentStory = story ?: return
         val snapshot = summarySettings?.snapshot() ?: return
+        if (snapshot.mode == AiSummaryMode.LOCAL && discussionSummary.running) return
         if (currentStory.url.isNullOrBlank()) return
         if (userSettings?.debug?.mockAiAnswers == true) {
             startSummary(null)
@@ -692,6 +731,7 @@ class CommentsFeatureRuntime(
         presenter.dispatch(CommentsAction.CancelPollVote)
         previewResourceRuntime?.dispose()
         summaryRuntime?.dispose()
+        discussionRuntime?.reset()
     }
 
     private fun execute(decision: FeatureDecision<CommentsAction, CommentsPlatformEffect>) {
@@ -750,6 +790,8 @@ class CommentsFeatureRuntime(
                     story?.let(publishStoryUpdate)
                 }
                 if (effect.contentApplied) {
+                    discussionRuntime?.invalidateIfSourceChanged(story?.title, story?.text, thread.state.value.allComments)
+                    if (!presenter.isCurrentThreadLoad(effect.requestId, effect.storyId)) return
                     reconcileSettings()
                     platform(CommentsPlatformEffect.ReloadLinkPreviews)
                     reloadPollOptions()
@@ -936,6 +978,10 @@ class CommentsFeatureRuntime(
                 canProvideSummary = canProvideSummary,
             )
         ) return
+        if (snapshot.mode == AiSummaryMode.LOCAL && discussionSummary.running) {
+            automaticSummaryDeferred = true
+            return
+        }
         automaticSummaryRequested = true
         requestSummary()
     }

@@ -15,9 +15,9 @@ import kotlinx.coroutines.flow.first
 
 /** The conversation context is fixed; source pixels, bounds and color follow the live summary. */
 data class PostAskState(
-    val subject: AskSource.Post,
+    val subject: AskSource,
     val source: GraphicsLayer,
-    val bounds: () -> Rect?,
+    val bounds: () -> Rect,
     val color: () -> Color,
 ) {
     var coveringSource by mutableStateOf(false)
@@ -31,7 +31,7 @@ internal fun PostAskOverlay(
     onOpenLink: (String) -> Unit,
 ) {
     val state = controller.postAsk ?: return
-    var entered by remember { mutableStateOf(false) }
+    var entered by remember(state) { mutableStateOf(false) }
     LaunchedEffect(Unit) { entered = true }
     val progress = rememberAskProgress(entered && controller.askOpen, controller.askBackProgress)
     val visible by remember(progress, controller) { computedStateOf { progress.value > 0f || controller.askOpen } }
@@ -49,7 +49,7 @@ internal fun PostAskOverlay(
         AskSurface(
             controller = controller,
             subject = state.subject,
-            origin = state.bounds()?.translate(-root.left, -root.top) ?: Rect.Zero,
+            origin = state.bounds().translate(-root.left, -root.top),
             progress = { progress.value },
             source = state.source,
             settings = settings,

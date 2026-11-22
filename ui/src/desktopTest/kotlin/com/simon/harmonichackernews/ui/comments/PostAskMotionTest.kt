@@ -3,6 +3,8 @@ package com.simon.harmonichackernews.ui.comments
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +23,8 @@ import com.simon.harmonichackernews.data.StoryPresentationSnapshot
 import com.simon.harmonichackernews.data.StorySnapshot
 import com.simon.harmonichackernews.navigation.StoryRoute
 import com.simon.harmonichackernews.presentation.StoryListItemSnapshot
+import com.simon.harmonichackernews.summary.AskSource
+import com.simon.harmonichackernews.summary.DiscussionSummaryState
 import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
@@ -36,6 +40,54 @@ import kotlin.math.abs
 import kotlin.test.*
 
 class PostAskMotionTest {
+    @Test
+    fun inlineDiscussionOpensAskFromItsCardAndReturnsToTheComments() = SwingUtilities.invokeAndWait {
+        val bootstrap = DesktopHarmonicAppBootstrap.inMemory("DiscussionAskHostTest")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val story = StoryListItemSnapshot(StorySnapshot(42, title = "A discussion"), StoryPresentationSnapshot())
+        bootstrap.scene.navigation.openStory(StoryRoute(42))
+        val binding = CommentsFeatureBinding.create(bootstrap.app, bootstrap.scene,
+            checkNotNull(bootstrap.scene.navigation.state.value.storyRequest), scope)
+        val controller = binding.controller
+        val settings = CommentDisplaySettings.from(bootstrap.app.userSettings.comments, false, false, false, false)
+        val palette = HarmonicThemeCatalog.resolve("material_light", false)
+        val scene = ImageComposeScene(400, 800, Density(1f)) {
+            HarmonicTheme(palette.colorScheme, palette.dark) {
+                CompositionLocalProvider(LocalHarmonicUiDependencies provides HarmonicUiDependencies(bootstrap.app, bootstrap.scene)) {
+                    Box(Modifier.fillMaxSize()) {
+                        Box(Modifier.padding(top = 160.dp)) { DiscussionSummaryCard(controller, settings, {}) }
+                        if (controller.isCommentActionOverlayShowing()) {
+                            CommentActionOverlay(controller, settings, false, false, TextStyle.Default, {})
+                        }
+                    }
+                }
+            }
+        }
+        try {
+            scene.render(0L).close()
+            assertNull(controller.postAsk)
+            controller.updateContent(CommentsScreenState(story,
+                canSummarizeDiscussion = true, discussionSummary = DiscussionSummaryState(text = "A discussion summary")))
+            assertFalse(controller.isCommentActionOverlayShowing())
+            repeat(35) { scene.render((it + 1) * 16_000_000L).close() }
+            scene.sendPointerEvent(PointerEventType.Press, Offset(336f, 196f))
+            scene.sendPointerEvent(PointerEventType.Release, Offset(336f, 196f))
+            repeat(45) { scene.render((it + 36) * 16_000_000L).close() }
+            assertIs<AskSource.Discussion>(controller.postAsk?.subject)
+            assertTrue(checkNotNull(controller.postAsk?.bounds?.invoke()).top >= 160f)
+            assertTrue(controller.askOpen)
+            controller.closeAsk()
+            repeat(45) { scene.render((it + 81) * 16_000_000L).close() }
+            assertFalse(controller.isCommentActionOverlayShowing())
+            assertEquals("A discussion summary", controller.discussionSummary.text)
+        } finally {
+            scene.close()
+            binding.close()
+            scope.cancel()
+            bootstrap.close()
+        }
+    }
+
     @Test
     fun summaryButtonMorphsIntoAskAndBackRestoresTheCurrentlyThemedSummary() = SwingUtilities.invokeAndWait {
         for (dark in listOf(false, true)) for (changeTheme in listOf(false, true)) {
@@ -99,7 +151,8 @@ class PostAskMotionTest {
                 assertCardNeverDisappears(click(336f, 36f))
                 assertTrue(controller.askOpen, "The summary's Ask button must open the shared screen")
                 assertTrue(controller.isCommentActionOverlayShowing(), "System Back must target Ask")
-                assertEquals(summary, controller.postAsk?.subject?.summary)
+                assertEquals(summary,
+                    (controller.postAsk?.subject as? AskSource.Post)?.summary)
                 repeat(12) { assertCardNeverDisappears(frame()) }
                 frame("opening")
                 repeat(55) { frame() }

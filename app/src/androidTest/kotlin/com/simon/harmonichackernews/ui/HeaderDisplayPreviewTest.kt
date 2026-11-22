@@ -421,7 +421,7 @@ class HeaderDisplayPreviewTest {
         compose.onNodeWithContentDescription("Summarize").assertDoesNotExist()
         compose.onNodeWithContentDescription("More options").performClick()
         compose.onNodeWithText("Favorite").assertIsDisplayed()
-        compose.onNodeWithText("Summarize").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Summarize article").assertIsDisplayed().performClick()
         compose.runOnIdle { state.value = state.value.copy(showFavicons = false, headerTint = CommentsHeaderTint.THEME) }
         compose.onNodeWithContentDescription("Site icon", useUnmergedTree = true).assertDoesNotExist()
         save("header-tight-toolbar-theme")
