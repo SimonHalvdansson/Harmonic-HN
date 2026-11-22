@@ -511,7 +511,7 @@ internal class SettingsCategoryScope {
 }
 
 @Composable
-private fun SettingsCategoryHeading(title: String, titleTopPadding: Dp) {
+internal fun SettingsCategoryHeading(title: String, titleTopPadding: Dp = HarmonicDimens.compose_settings_category_padding_top) {
     val colors = HarmonicTheme.colors
     Column {
         Crossfade(
