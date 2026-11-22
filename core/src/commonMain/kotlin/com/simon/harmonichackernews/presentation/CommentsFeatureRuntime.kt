@@ -206,8 +206,9 @@ class CommentsFeatureRuntime(
         }
         discussionRuntime?.let { runtime ->
             scope.launch {
-                runtime.state.collect {
-                    if (!it.running && automaticSummaryDeferred) {
+                runtime.state.collect { state ->
+                    state.error?.let { platform(CommentsPlatformEffect.ShowMessage(it)) }
+                    if (!state.running && automaticSummaryDeferred) {
                         automaticSummaryDeferred = false
                         requestAutomaticSummaryIfEligible()
                     }
