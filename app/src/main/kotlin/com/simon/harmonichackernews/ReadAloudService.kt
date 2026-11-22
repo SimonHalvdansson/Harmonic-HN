@@ -54,6 +54,11 @@ class ReadAloudService : Service() {
         controller = ReadAloudController(createReadAloudEngine(AndroidSpeechEngine(this)) {
             (application as HarmonicApplication).composition.userSettings.reading.preferNaturalVoice
         })
+        scope.launch {
+            (application as HarmonicApplication).composition.settings.updates.collect { settings ->
+                if (!settings.reading.readAloudEnabled && controller.state.value.count > 0) controller.stop()
+            }
+        }
         session = MediaSession(this, "Read aloud").apply {
             setCallback(object : MediaSession.Callback() {
                 override fun onPlay() { command(action("play")) }
@@ -106,6 +111,11 @@ class ReadAloudService : Service() {
         return START_NOT_STICKY
     }
     internal fun command(command: JsonObject) {
+        if (!(application as HarmonicApplication).composition.userSettings.reading.readAloudEnabled) {
+            controller.stop()
+            stopSelf()
+            return
+        }
         val name = command["action"]?.jsonPrimitive?.content
         if (name == "start" || name == "play") {
             if (!requestFocus()) {

@@ -79,6 +79,7 @@ enum class ReadingBooleanPreference(internal val storageKey: String) {
     READER_MODE_ENABLED(UserPreferenceKeys.READER_MODE_ENABLED),
     LINK_PREVIEWS_ENABLED(UserPreferenceKeys.LINK_PREVIEWS_ENABLED),
     READER_MODE_DEFAULT(UserPreferenceKeys.READER_MODE_DEFAULT),
+    READ_ALOUD_ENABLED(UserPreferenceKeys.READ_ALOUD_ENABLED),
     READ_ALOUD_MINI_PLAYER(UserPreferenceKeys.READ_ALOUD_MINI_PLAYER),
     PREFER_NATURAL_VOICE(UserPreferenceKeys.PREFER_NATURAL_VOICE),
     PULL_TO_OPEN_BROWSER(UserPreferenceKeys.PULL_TO_OPEN_BROWSER),

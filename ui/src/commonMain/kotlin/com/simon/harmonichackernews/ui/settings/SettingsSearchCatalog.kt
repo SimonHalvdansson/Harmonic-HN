@@ -230,11 +230,14 @@ internal fun settingsSearchCatalog(
         "Font" to "typeface typography serif sans reader",
         "Text size" to "font bigger smaller accessibility zoom",
         "Line height" to "line spacing leading readability")
+    if (capabilities.webLinks.readerMode) {
+        group(SettingsSection.ReaderMode, "Text to speech", "Read aloud" to "listen TTS speech audio playback")
+    }
     if (capabilities.webLinks.readerMode && capabilities.naturalVoiceAvailable) {
-        group(SettingsSection.ReaderMode, "Reading", "Read-aloud voice" to "natural system default speech TTS ML Kit")
+        group(SettingsSection.ReaderMode, "Text to speech", "Use ML Kit voice" to "natural system default speech TTS ML Kit")
     }
     if (capabilities.webLinks.readerMode && capabilities.webLinks.readAloudMiniPlayer) {
-        group(SettingsSection.ReaderMode, "Reading", "Show mini-player" to "read aloud speech audio playback controls listen")
+        group(SettingsSection.ReaderMode, "Text to speech", "Show mini-player" to "read aloud speech audio playback controls listen")
     }
     group(SettingsSection.FiltersTags, "Filters",
         "Filter by story title" to "keyword block mute hide words exclude blacklist",

@@ -9,9 +9,11 @@ import kotlin.test.assertTrue
 
 class SettingsSearchTest {
     @Test fun voiceChoiceIsOnlyIndexedWhenAvailable() {
-        assertFalse(entries().any { it.title == "Read-aloud voice" })
+        assertEquals("Text to speech", target("Read aloud").path.last())
+        assertEquals("Text to speech", target("Show mini-player").path.last())
+        assertFalse(entries().any { it.title == "Use ML Kit voice" })
         val supported = SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(naturalVoiceAvailable = true))
-        assertEquals(SettingsSection.ReaderMode.route, entries(supported).single { it.title == "Read-aloud voice" }.screenRoute)
+        assertEquals(SettingsSection.ReaderMode.route, entries(supported).single { it.title == "Use ML Kit voice" }.screenRoute)
     }
 
     @Test fun miniPlayerSettingIsOnlyIndexedForMobileHosts() {

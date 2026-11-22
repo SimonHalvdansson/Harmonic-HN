@@ -276,7 +276,11 @@ fun main() {
                                     }
                                     if (DesktopReadAloud.supported) {
                                         val speech by DesktopReadAloud.controller.state.collectAsState()
-                                        com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer(speech) { action ->
+                                        val speechEnabled = fontSettings.reading.readAloudEnabled
+                                        LaunchedEffect(speechEnabled) {
+                                            if (!speechEnabled) DesktopReadAloud.controller.stop()
+                                        }
+                                        com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer(speech, enabled = speechEnabled) { action ->
                                             DesktopReadAloud.controller.command(buildJsonObject { put("action", action) })
                                         }
                                     }

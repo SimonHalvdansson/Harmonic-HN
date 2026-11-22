@@ -1,5 +1,5 @@
 (function() {
-    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 17) {
+    if (window.HarmonicReaderMode && window.HarmonicReaderMode.version === 18) {
         return;
     }
 
@@ -1164,7 +1164,12 @@
     }
 
     window.HarmonicReaderMode = {
-        version: 17,
+        version: 18,
+        clearReadAloud: function() {
+            speechCommand = null;
+            var host = document.querySelector("harmonic-listen");
+            if (host) host.remove();
+        },
         readAloudTick: readAloudTick,
         setReadAloudTheme: function(theme) { speechTheme = theme; },
         setTheme: setTheme,

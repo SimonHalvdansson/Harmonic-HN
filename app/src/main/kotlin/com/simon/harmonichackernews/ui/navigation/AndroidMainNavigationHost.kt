@@ -159,7 +159,8 @@ private fun AndroidReadAloudHost(activity: MainActivity, content: @Composable ()
     val repository = LocalHarmonicUiDependencies.current.settings
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val speech by AndroidReadAloud.state.collectAsStateWithLifecycle()
-    val visible = settings.reading.readAloudMiniPlayer && speech.count > 0
+    val playerEnabled = settings.reading.readAloudEnabled && settings.reading.readAloudMiniPlayer
+    val visible = playerEnabled && speech.count > 0
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val playerBottomInset by animateDpAsState(
         targetValue = if (visible) navigationBottom else 0.dp,
@@ -173,7 +174,7 @@ private fun AndroidReadAloudHost(activity: MainActivity, content: @Composable ()
     ) {
         // AndroidView may draw beyond its resized bounds while Chromium catches up.
         Box(Modifier.weight(1f).clipToBounds()) { content() }
-        ReadAloudMiniPlayer(speech, enabled = settings.reading.readAloudMiniPlayer) { action ->
+        ReadAloudMiniPlayer(speech, enabled = playerEnabled) { action ->
             AndroidReadAloud.command(activity.applicationContext, buildJsonObject { put("action", action) })
         }
     }

@@ -60,7 +60,7 @@ private suspend fun <T> withSpeechFallback(action: suspend () -> T): T? = try {
     null
 }
 
-internal suspend fun isNaturalVoiceSupported(): Boolean = withContext(Dispatchers.IO) {
+internal suspend fun naturalVoiceAvailability(): Boolean = withContext(Dispatchers.IO) {
     withSpeechFallback { newSynthesizer().use { it.findVoice() != null } } == true
 }
 

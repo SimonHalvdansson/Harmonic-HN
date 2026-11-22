@@ -85,6 +85,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.asStateFlow
 
 /** The lifecycle state the WebView island needs from its owning comments surface. */
@@ -156,6 +157,7 @@ internal class AndroidCommentsWebViewController(
     private val webContentDriver = AndroidWebContentDriver()
     private val webContentSession = EmbeddedWebContentSession(webContentRuntime, webContentDriver)
     private val webContentController = webContentSession.controller
+    private val readAloudEnabled = MutableStateFlow(true)
     private var readAloudJob: Job? = null
     private var readerApplyJob: Job? = null
     private var readerApplyRequest = 0
@@ -220,6 +222,7 @@ internal class AndroidCommentsWebViewController(
         this.showWebsite = showWebsite
         this.integratedWebview = integratedWebview
         this.readingPreferences = readingPreferences
+        readAloudEnabled.value = readingPreferences.readAloudEnabled
         this.preloadWebview = readingPreferences.preloadWebViewMode
         this.preloadWebviewMinimumBattery = readingPreferences.preloadWebViewMinimumBattery
         this.matchWebviewTheme = readingPreferences.matchWebViewTheme
@@ -1522,27 +1525,30 @@ internal class AndroidCommentsWebViewController(
             readAloudJob?.cancel()
             if (pageEligible) readAloudJob = coroutineScope.launch {
                 val script = readerModeResources.script(currentView.context) ?: return@launch
-                com.simon.harmonichackernews.presentation.ReadAloudWebSession.run(
-                    script = com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol.readAloudCommand(
-                        script, readerModeResources.theme(currentView.context, readingPreferences),
-                    ),
-                    evaluate = { source ->
-                        if (currentView !== webView || finishedGeneration != webContentLoad.state.generation) throw CancellationException("Page changed")
-                        kotlinx.coroutines.withTimeoutOrNull(5000) {
-                            kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
-                                currentView.evaluateJavascript(source) { value ->
-                                    if (continuation.isActive) continuation.resumeWith(Result.success(
-                                        value.takeIf { currentView === webView && finishedGeneration == webContentLoad.state.generation },
-                                    ))
+                readAloudEnabled.collectLatest { enabled ->
+                    com.simon.harmonichackernews.presentation.ReadAloudWebSession.run(
+                        enabled = enabled,
+                        script = com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol.readAloudCommand(
+                            script, readerModeResources.theme(currentView.context, readingPreferences),
+                        ),
+                        evaluate = { source ->
+                            if (currentView !== webView || finishedGeneration != webContentLoad.state.generation) throw CancellationException("Page changed")
+                            kotlinx.coroutines.withTimeoutOrNull(5000) {
+                                kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+                                    currentView.evaluateJavascript(source) { value ->
+                                        if (continuation.isActive) continuation.resumeWith(Result.success(
+                                            value.takeIf { currentView === webView && finishedGeneration == webContentLoad.state.generation },
+                                        ))
+                                    }
                                 }
                             }
-                        }
-                    },
-                    state = { AndroidReadAloud.state.value },
-                    command = { AndroidReadAloud.command(currentView.context.applicationContext, it) },
-                    // showWebsite is the initial destination, not the live sheet visibility.
-                    visible = { hostStarted && integratedWebview && !coveredByComments },
-                )
+                        },
+                        state = { AndroidReadAloud.state.value },
+                        command = { AndroidReadAloud.command(currentView.context.applicationContext, it) },
+                        // showWebsite is the initial destination, not the live sheet visibility.
+                        visible = { hostStarted && integratedWebview && !coveredByComments },
+                    )
+                }
             }
             val readerResult = webContentSession.onPageFinished(pageEligible)
             applyReaderModeChange(readerResult.change)

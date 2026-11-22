@@ -3,7 +3,7 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.pm.PackageManager
 import android.os.Build
 import com.simon.harmonichackernews.BuildConfig
-import com.simon.harmonichackernews.isNaturalVoiceSupported
+import com.simon.harmonichackernews.naturalVoiceAvailability
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import com.simon.harmonichackernews.platform.accountOrNull
@@ -44,8 +44,8 @@ fun SettingsShell(
     val settingsAccountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
-    val naturalVoiceAvailable by produceState(false, configuration.locales) {
-        value = isNaturalVoiceSupported()
+    val naturalVoiceAvailable by produceState<Boolean?>(null, configuration.locales) {
+        value = naturalVoiceAvailability()
     }
     val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
     val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -73,7 +73,7 @@ fun SettingsShell(
         directive = directive,
         supportsTwoPane = supportsTwoPane,
         searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true,
-            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable),
+            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable == true),
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,

@@ -15,6 +15,22 @@ class ReaderTypographySettingsTest {
         assertFalse(AppSettingsRepository(store, store.changes).snapshot().reading.preferNaturalVoice)
     }
 
+    @Test fun disablingReadAloudPreservesPlaybackPreferencesAndSurvivesTransfer() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        val transfer = SettingsTransfer(store, InMemoryKeyValueStore())
+        assertTrue(repository.snapshot().reading.readAloudEnabled)
+        repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, true)
+        repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_ENABLED, false)
+        val backup = transfer.export()
+        repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_ENABLED, true)
+        assertIs<SettingsImportResult.Imported>(transfer.import(backup))
+        val reading = repository.snapshot().reading
+        assertFalse(reading.readAloudEnabled)
+        assertTrue(reading.readAloudMiniPlayer)
+        assertTrue(reading.preferNaturalVoice)
+    }
+
     @Test fun miniPlayerIsOptInAndSurvivesSettingsTransfer() {
         val store = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(store, store.changes)

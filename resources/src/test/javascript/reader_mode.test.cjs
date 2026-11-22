@@ -571,6 +571,10 @@ test('read aloud only appears in reader mode and restores playback controls on r
         await enable(page);
         await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), idle);
         await page.getByRole('button', {name:'Listen',exact:true}).click();
+        await page.evaluate(() => HarmonicReaderMode.clearReadAloud());
+        assert.equal(await page.locator('harmonic-listen').count(), 0);
+        assert.equal(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)), idle), null);
+        await page.getByRole('button', {name:'Listen',exact:true}).click();
         const command = await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)), idle);
         assert.equal(command.action, 'start');
         assert.equal(command.title, 'Article title');

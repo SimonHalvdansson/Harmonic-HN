@@ -309,6 +309,7 @@ internal fun IosCommentsContent(
                 com.simon.harmonichackernews.presentation.WebContentPlatformUrls("about:harmonic-pdf", "about:harmonic-error"),
             )) {
             com.simon.harmonichackernews.presentation.ReadAloudWebSession.run(
+                enabled = reading.readAloudEnabled,
                 script = com.simon.harmonichackernews.presentation.ReaderModeScriptProtocol.readAloudCommand(
                     ReaderModeResources.script(), ReaderModeResources.theme(readerColors, !appearance.dark, reading),
                 ),

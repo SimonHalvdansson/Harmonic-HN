@@ -8,12 +8,17 @@ import kotlinx.serialization.json.JsonObject
 /** Only the top document is evaluated; no native JavascriptInterface is exposed to subframes. */
 object ReadAloudWebSession {
     suspend fun run(
+        enabled: Boolean,
         script: String,
         evaluate: suspend (String) -> String?,
         state: () -> ReadAloudState,
         command: (JsonObject) -> Unit,
         visible: () -> Boolean = { true },
     ) {
+        if (!enabled) {
+            evaluate("window.HarmonicReaderMode && HarmonicReaderMode.clearReadAloud();")
+            return
+        }
         var installed = false
         while (currentCoroutineContext().isActive) {
             if (visible()) {

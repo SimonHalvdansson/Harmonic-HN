@@ -353,7 +353,11 @@ private fun IosApp(
                 CompositionLocalProvider(LocalIosReadAloud provides bootstrap.readAloud?.controller) {
                     val readAloud = bootstrap.readAloud?.controller
                     val speech = readAloud?.state?.collectAsState()?.value
-                    val playerVisible = fontSettings.reading.readAloudMiniPlayer && speech != null && speech.count > 0
+                    val speechEnabled = fontSettings.reading.readAloudEnabled
+                    LaunchedEffect(readAloud, speechEnabled) {
+                        if (!speechEnabled) readAloud?.stop()
+                    }
+                    val playerVisible = speechEnabled && fontSettings.reading.readAloudMiniPlayer && speech != null && speech.count > 0
                     Column(
                         Modifier.fillMaxSize().then(
                             if (playerVisible) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,

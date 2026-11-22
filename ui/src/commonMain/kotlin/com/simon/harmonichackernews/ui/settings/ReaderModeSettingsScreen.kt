@@ -20,7 +20,7 @@ fun ReaderModeSettingsRoute(
     onBack: () -> Unit,
     preview: @Composable (ReadingPreferences, Boolean) -> Unit,
     miniPlayerSettingVisible: Boolean = true,
-    naturalVoiceAvailable: Boolean = false,
+    naturalVoiceAvailable: Boolean? = null,
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
@@ -52,27 +52,6 @@ fun ReaderModeSettingsRoute(
                     enabled = controlsEnabled,
                     onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, it) },
                 )
-                if (naturalVoiceAvailable) {
-                    SettingsDivider()
-                    SegmentedSetting(
-                        title = "Read-aloud voice",
-                        summary = "Natural voice downloads on first use. Speeds other than 1× use the system voice.",
-                        options = listOf(false to "System default", true to "Natural voice"),
-                        selected = reading.preferNaturalVoice,
-                        enabled = controlsEnabled,
-                        onSelected = { repository.setReadingBoolean(ReadingBooleanPreference.PREFER_NATURAL_VOICE, it) },
-                    )
-                }
-                if (miniPlayerSettingVisible) {
-                    SettingsDivider()
-                    SwitchSettingRow(
-                        title = "Show mini-player",
-                        icon = Res.drawable.ic_book_ribbon,
-                        summary = "Keep read-aloud controls visible after leaving an article",
-                        checked = reading.readAloudMiniPlayer,
-                        onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, it) },
-                    )
-                }
                 SettingsDivider()
                 SettingRow(title = "Font", summary = reading.readerModeFont.label,
                     icon = Res.drawable.ic_font_download, enabled = controlsEnabled, onClick = { showFontPicker = true })
@@ -95,6 +74,45 @@ fun ReaderModeSettingsRoute(
                     enabled = controlsEnabled,
                     onSelected = repository::setReaderModeLineHeight,
                 )
+            }
+        }
+        item {
+            SettingsCategory("Text to speech") {
+                SwitchSettingRow(
+                    title = "Read aloud",
+                    summary = "Show the Listen button in reader mode",
+                    icon = Res.drawable.ic_volume_up,
+                    checked = reading.readAloudEnabled,
+                    enabled = controlsEnabled,
+                    onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_ENABLED, it) },
+                )
+                val speechEnabled = controlsEnabled && reading.readAloudEnabled
+                if (miniPlayerSettingVisible) {
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Show mini-player",
+                        summary = "Keep playback controls visible after leaving an article",
+                        icon = Res.drawable.ic_web_asset,
+                        checked = reading.readAloudMiniPlayer,
+                        enabled = speechEnabled,
+                        onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READ_ALOUD_MINI_PLAYER, it) },
+                    )
+                }
+                if (naturalVoiceAvailable != null) {
+                    SettingsDivider()
+                    SwitchSettingRow(
+                        title = "Use ML Kit voice",
+                        summary = if (naturalVoiceAvailable) {
+                            "Download a natural voice for playback at 1× speed"
+                        } else {
+                            "Natural voice unavailable on this device"
+                        },
+                        icon = Res.drawable.ic_auto_awesome,
+                        checked = naturalVoiceAvailable && reading.preferNaturalVoice,
+                        enabled = speechEnabled && naturalVoiceAvailable,
+                        onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.PREFER_NATURAL_VOICE, it) },
+                    )
+                }
             }
         }
     }
