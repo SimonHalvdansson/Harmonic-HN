@@ -13,6 +13,7 @@ data class SettingsSearchCapabilities(
     val commentsSwipeBack: Boolean = false,
     val peekStoryHeader: Boolean = true,
     val articleCategories: Boolean = true,
+    val naturalVoiceAvailable: Boolean = false,
 )
 
 internal data class SettingsSearchAvailability(
@@ -229,6 +230,9 @@ internal fun settingsSearchCatalog(
         "Font" to "typeface typography serif sans reader",
         "Text size" to "font bigger smaller accessibility zoom",
         "Line height" to "line spacing leading readability")
+    if (capabilities.webLinks.readerMode && capabilities.naturalVoiceAvailable) {
+        group(SettingsSection.ReaderMode, "Reading", "Read-aloud voice" to "natural system default speech TTS ML Kit")
+    }
     if (capabilities.webLinks.readerMode && capabilities.webLinks.readAloudMiniPlayer) {
         group(SettingsSection.ReaderMode, "Reading", "Show mini-player" to "read aloud speech audio playback controls listen")
     }

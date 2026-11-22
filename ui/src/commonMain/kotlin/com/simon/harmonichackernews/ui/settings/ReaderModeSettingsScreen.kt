@@ -20,6 +20,7 @@ fun ReaderModeSettingsRoute(
     onBack: () -> Unit,
     preview: @Composable (ReadingPreferences, Boolean) -> Unit,
     miniPlayerSettingVisible: Boolean = true,
+    naturalVoiceAvailable: Boolean = false,
 ) {
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val reading = settings.reading
@@ -51,6 +52,17 @@ fun ReaderModeSettingsRoute(
                     enabled = controlsEnabled,
                     onCheckedChange = { repository.setReadingBoolean(ReadingBooleanPreference.READER_MODE_DEFAULT, it) },
                 )
+                if (naturalVoiceAvailable) {
+                    SettingsDivider()
+                    SegmentedSetting(
+                        title = "Read-aloud voice",
+                        summary = "Natural voice downloads on first use. Speeds other than 1× use the system voice.",
+                        options = listOf(false to "System default", true to "Natural voice"),
+                        selected = reading.preferNaturalVoice,
+                        enabled = controlsEnabled,
+                        onSelected = { repository.setReadingBoolean(ReadingBooleanPreference.PREFER_NATURAL_VOICE, it) },
+                    )
+                }
                 if (miniPlayerSettingVisible) {
                     SettingsDivider()
                     SwitchSettingRow(

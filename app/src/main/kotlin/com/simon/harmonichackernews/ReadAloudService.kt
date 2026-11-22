@@ -51,7 +51,9 @@ class ReadAloudService : Service() {
     override fun onCreate() {
         super.onCreate()
         audio = getSystemService(AudioManager::class.java)
-        controller = ReadAloudController(AndroidSpeechEngine(this))
+        controller = ReadAloudController(createReadAloudEngine(AndroidSpeechEngine(this)) {
+            (application as HarmonicApplication).composition.userSettings.reading.preferNaturalVoice
+        })
         session = MediaSession(this, "Read aloud").apply {
             setCallback(object : MediaSession.Callback() {
                 override fun onPlay() { command(action("play")) }

@@ -3,6 +3,18 @@ package com.simon.harmonichackernews.settings
 import kotlin.test.*
 
 class ReaderTypographySettingsTest {
+    @Test fun naturalVoiceIsPreferredUntilTheUserChoosesSystem() {
+        val store = InMemoryKeyValueStore()
+        val repository = AppSettingsRepository(store, store.changes)
+        assertTrue(repository.snapshot().reading.preferNaturalVoice)
+        repository.setReadingBoolean(ReadingBooleanPreference.PREFER_NATURAL_VOICE, false)
+        val transfer = SettingsTransfer(store, InMemoryKeyValueStore())
+        val backup = transfer.export()
+        repository.setReadingBoolean(ReadingBooleanPreference.PREFER_NATURAL_VOICE, true)
+        assertIs<SettingsImportResult.Imported>(transfer.import(backup))
+        assertFalse(AppSettingsRepository(store, store.changes).snapshot().reading.preferNaturalVoice)
+    }
+
     @Test fun miniPlayerIsOptInAndSurvivesSettingsTransfer() {
         val store = InMemoryKeyValueStore()
         val repository = AppSettingsRepository(store, store.changes)

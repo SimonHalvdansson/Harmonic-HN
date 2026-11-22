@@ -78,10 +78,11 @@ jobs:
           --no-daemon
           --max-workers=2
           --parallel
-      - name: Test Play local AI runtime delivery and Nano prompts
+      - name: Test Play local AI runtime delivery, Nano prompts, and read-aloud voices
         run: >-
           ./gradlew -Pharmonic.testBuildType=debugLLM
           :app:testDebugLLMUnitTest --tests '*LocalAiRuntimeStatusTest' --tests '*NanoPromptIntegrationTest'
+          --tests '*NaturalVoiceEngineTest'
           :local_ai_runtime:testDebugLLMUnitTest
           --no-daemon --max-workers=2
       - name: Upload JVM test reports on failure

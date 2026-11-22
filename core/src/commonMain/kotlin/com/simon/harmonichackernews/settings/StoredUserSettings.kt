@@ -118,6 +118,7 @@ object UserPreferenceKeys {
     const val WEBVIEW_MATCH_THEME = "pref_webview_match_theme"
     const val LINK_PREVIEWS_ENABLED = "pref_link_previews_enabled"
     const val READER_MODE_ENABLED = "pref_webview_reader_mode_enabled"
+    const val PREFER_NATURAL_VOICE = "pref_read_aloud_natural_voice"
     const val READ_ALOUD_MINI_PLAYER = "pref_read_aloud_mini_player"
     const val READER_MODE_DEFAULT = "pref_webview_reader_mode_default"
     const val WEBVIEW_ADBLOCK = "pref_webview_adblock"
@@ -342,6 +343,7 @@ class StoredUserSettings(
                 ),
                 matchWebViewTheme = boolean(UserPreferenceKeys.WEBVIEW_MATCH_THEME, false),
                 readerModeEnabled = readerModeEnabled,
+                preferNaturalVoice = boolean(UserPreferenceKeys.PREFER_NATURAL_VOICE, true),
                 readAloudMiniPlayer = boolean(UserPreferenceKeys.READ_ALOUD_MINI_PLAYER, false),
                 readerModeDefault = readerModeEnabled &&
                     boolean(UserPreferenceKeys.READER_MODE_DEFAULT, false),

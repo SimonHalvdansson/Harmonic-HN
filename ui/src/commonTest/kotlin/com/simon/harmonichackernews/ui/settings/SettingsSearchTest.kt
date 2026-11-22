@@ -8,6 +8,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsSearchTest {
+    @Test fun voiceChoiceIsOnlyIndexedWhenAvailable() {
+        assertFalse(entries().any { it.title == "Read-aloud voice" })
+        val supported = SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(naturalVoiceAvailable = true))
+        assertEquals(SettingsSection.ReaderMode.route, entries(supported).single { it.title == "Read-aloud voice" }.screenRoute)
+    }
+
     @Test fun miniPlayerSettingIsOnlyIndexedForMobileHosts() {
         assertEquals(SettingsSection.ReaderMode.route, target("Show mini-player").screenRoute)
         val desktop = SettingsSearchAvailability(capabilities = SettingsSearchCapabilities(

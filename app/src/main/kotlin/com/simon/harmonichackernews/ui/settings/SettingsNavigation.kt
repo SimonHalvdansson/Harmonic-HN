@@ -3,12 +3,14 @@ package com.simon.harmonichackernews.ui.settings
 import android.content.pm.PackageManager
 import android.os.Build
 import com.simon.harmonichackernews.BuildConfig
+import com.simon.harmonichackernews.isNaturalVoiceSupported
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import com.simon.harmonichackernews.platform.accountOrNull
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -42,6 +44,9 @@ fun SettingsShell(
     val settingsAccountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
+    val naturalVoiceAvailable by produceState(false, configuration.locales) {
+        value = isNaturalVoiceSupported()
+    }
     val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
     val hasHingeAngleSensor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE)
@@ -68,7 +73,7 @@ fun SettingsShell(
         directive = directive,
         supportsTwoPane = supportsTwoPane,
         searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true,
-            articleCategories = showArticleCategories),
+            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable),
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,
@@ -173,6 +178,7 @@ fun SettingsShell(
                 )
                 SettingsSection.ReaderMode -> ReaderModeSettingsRoute(
                     dependencies.settings, onBack, preview = { reading, _ -> AndroidReaderModePreview(reading) },
+                    naturalVoiceAvailable = naturalVoiceAvailable,
                 )
                 SettingsSection.FiltersTags -> AndroidFiltersTagsSettingsScreen(
                     showNavigation = singlePane,
