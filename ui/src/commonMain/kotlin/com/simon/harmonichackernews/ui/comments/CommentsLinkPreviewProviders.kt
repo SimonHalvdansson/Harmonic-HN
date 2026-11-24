@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.simon.harmonichackernews.ui.common.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -347,12 +344,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 )
             }
             if (expanded || truncated) {
-                TextButton(onClick = { expanded = !expanded }, modifier = Modifier.align(Alignment.End)) {
-                    Icon(painterResource(if (expanded) Res.drawable.ic_remove else Res.drawable.ic_add),
-                        contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(if (expanded) "Show less" else "Show more", fontFamily = LocalPreviewFontFamily.current)
-                }
+                PreviewExpansionButton(expanded, { expanded = !expanded }, Modifier.align(Alignment.End))
             }
         } else {
             PreviewBody(
@@ -406,6 +398,7 @@ private fun RichPreviewDetail(detail: LinkPreviewDetail, type: LinkPreviewType) 
             "license" -> Res.drawable.ic_attribution
             "version", "revision" -> Res.drawable.ic_tag
             "state", "status", "impact", "access" -> Res.drawable.ic_info
+            "commits" -> Res.drawable.ic_commit
             "files", "items", "dependencies" -> Res.drawable.ic_library_books
             else -> Res.drawable.ic_subject
         },

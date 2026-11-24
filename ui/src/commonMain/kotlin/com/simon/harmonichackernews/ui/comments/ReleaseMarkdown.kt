@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 import com.simon.harmonichackernews.resources.Res
 import com.simon.harmonichackernews.resources.ic_add
 import com.simon.harmonichackernews.resources.ic_remove
-import com.simon.harmonichackernews.ui.common.TextButton
+import com.simon.harmonichackernews.ui.common.OutlinedButton
 import org.jetbrains.compose.resources.painterResource
 
 internal sealed interface ReleaseMarkdownBlock {
@@ -227,7 +227,7 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
     val platform = LocalCommentsPreviewPlatform.current
     Column(modifier.animateContentSize()) {
         if (expanded && truncated) {
-            ReleaseExpansionButton(true, { expanded = false }, Modifier.align(Alignment.End))
+            PreviewExpansionButton(true, { expanded = false }, Modifier.align(Alignment.End))
         }
         blocks.forEach { block ->
             when (block) {
@@ -252,14 +252,14 @@ internal fun ReleaseMarkdownContent(markdown: String, pageUrl: String, modifier:
             }
         }
         if (truncated) {
-            ReleaseExpansionButton(expanded, { expanded = !expanded }, Modifier.align(Alignment.End))
+            PreviewExpansionButton(expanded, { expanded = !expanded }, Modifier.align(Alignment.End))
         }
     }
 }
 
 @Composable
-private fun ReleaseExpansionButton(expanded: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    TextButton(onClick = onClick, modifier = modifier) {
+internal fun PreviewExpansionButton(expanded: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    OutlinedButton(onClick = onClick, modifier = modifier) {
         Icon(painterResource(if (expanded) Res.drawable.ic_remove else Res.drawable.ic_add),
             contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
