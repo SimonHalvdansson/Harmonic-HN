@@ -210,6 +210,10 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
             put(UserPreferenceKeys.STORY_DISPLAY_STYLE, choice(DisplayStyle.entries.map { it.storedValue } + "card"))
             put(UserPreferenceKeys.COMMENT_DISPLAY_STYLE, choice(DisplayStyle.entries.map { it.storedValue } + "card"))
             put(UserPreferenceKeys.STORY_PREVIEW_IMAGE_MODE, choice(StoryPreviewMode.entries.map { it.storedValue }))
+            put(UserPreferenceKeys.TRANSLATION_MODE, choice(CommentTranslationMode.entries.map { it.name }))
+            put(UserPreferenceKeys.TRANSLATION_LANGUAGE, stringRule { language ->
+                language.takeIf { it.isEmpty() || (it.length in 2..3 && it.all { c -> c in 'a'..'z' }) }
+            })
             put(UserPreferenceKeys.COMMENT_SORTING, choice(CommentSortingPreference.entries.map { it.storedValue }))
             put(UserPreferenceKeys.COMMENTS_PROVIDER, choice(CommentsProvider.entries.map { it.storedValue }))
             put(UserPreferenceKeys.COMMENTS_VOLUME_NAVIGATION, choice(CommentVolumeNavigationMode.entries.map { it.storedValue }))

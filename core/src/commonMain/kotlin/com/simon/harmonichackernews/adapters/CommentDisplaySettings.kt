@@ -12,6 +12,7 @@ import com.simon.harmonichackernews.settings.CommentsHeaderButtons
 import com.simon.harmonichackernews.settings.CommentsHeaderTint
 
 import com.simon.harmonichackernews.settings.DisplayStyle
+import com.simon.harmonichackernews.settings.CommentTranslationPreferences
 import com.simon.harmonichackernews.settings.CommentIndicatorThickness
 import com.simon.harmonichackernews.settings.CommentDepthPreferences
 import com.simon.harmonichackernews.settings.CommentPreferences
@@ -53,6 +54,7 @@ data class CommentDisplaySettings(
     val roundedDepthIndicators: Boolean = false,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
+    val translation: CommentTranslationPreferences = CommentTranslationPreferences(),
     val userAvatarsEnabled: Boolean = false,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,
@@ -96,6 +98,7 @@ data class CommentDisplaySettings(
             roundedDepthIndicators = preferences.roundedDepthIndicators,
             continuousDepthIndicators = preferences.continuousDepthIndicators &&
                 preferences.depthIndicatorMode != CommentDepthPreferences.AUTHOR,
+            translation = preferences.translation,
             userAvatarsEnabled = preferences.userAvatarsEnabled,
             userAvatarOptions = preferences.userAvatarOptions,
             showFavicons = preferences.showFavicons,

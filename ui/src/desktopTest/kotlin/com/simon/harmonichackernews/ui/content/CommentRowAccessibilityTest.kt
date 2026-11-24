@@ -18,11 +18,58 @@ import com.simon.harmonichackernews.ui.HarmonicUiDependencies
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
+import com.simon.harmonichackernews.settings.UserAvatarOptions
+import kotlin.test.assertTrue
 import javax.swing.SwingUtilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CommentRowAccessibilityTest {
+    @Test
+    fun trailingActionMovesAsDotAndReplyCountMakeRoom() = SwingUtilities.invokeAndWait {
+        var fresh by mutableStateOf(false)
+        var collapsed by mutableStateOf(false)
+        var actionX = 0f
+        val scene = ImageComposeScene(450, 80) {
+            CommentMeta(
+                author = "alice", age = "1h", isNew = fresh, avatarsEnabled = false,
+                avatarOptions = UserAvatarOptions(), byOp = false, byUser = false, userTag = null,
+                hiddenPreview = null, subtreeReplyCount = 12, showHiddenReplyCount = collapsed,
+                emphasized = false, fontFamily = FontFamily.Default, animateChanges = true,
+                trailingAction = {
+                    Box(Modifier.size(36.dp).onGloballyPositioned { actionX = it.boundsInRoot().left })
+                },
+            )
+        }
+        var time = 0L
+        fun positions(): List<Float> = List(36) {
+            scene.render(time).close()
+            time += 16_666_667L
+            actionX
+        }
+        try {
+            val initial = positions().last()
+            fresh = true
+            val dot = positions()
+            assertTrue(dot.any { it < initial && it > dot.last() })
+            collapsed = true
+            val count = positions()
+            assertTrue(count.any { it < dot.last() && it > count.last() })
+            collapsed = false
+            fresh = false
+            assertEquals(initial, positions().last())
+        } finally {
+            scene.close()
+        }
+    }
+
     @Test
     fun actionLabelsTrackExpandedStateGesturePreferenceAndSearchContext() = SwingUtilities.invokeAndWait {
         val bootstrap = DesktopHarmonicAppBootstrap.inMemory("CommentRowAccessibility")

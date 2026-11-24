@@ -87,6 +87,10 @@ object UserPreferenceKeys {
     const val HIGHLIGHT_QUOTES = "pref_highlight_quotes"
     const val ROUNDED_DEPTH_INDICATORS = "pref_rounded_depth_indicators"
     const val CONTINUOUS_DEPTH_INDICATORS = "pref_continuous_depth_indicators"
+    const val TRANSLATION_ENABLED = "pref_comment_translation"
+    const val SHOW_ORIGINAL_WHILE_TRANSLATING = "pref_comment_translation_show_original"
+    const val TRANSLATION_MODE = "pref_comment_translation_mode"
+    const val TRANSLATION_LANGUAGE = "pref_comment_translation_language"
     const val USER_AVATARS_ENABLED = "pref_user_avatars_enabled"
     const val USER_AVATAR_OPTIONS = "pref_user_avatar_options"
     const val MONOCHROME_COMMENT_DEPTH = "pref_monochrome_comment_depth"
@@ -275,6 +279,13 @@ class StoredUserSettings(
                 quoteHighlightStyle = QuoteHighlightStyle.fromStored(string(UserPreferenceKeys.QUOTE_HIGHLIGHT_STYLE, "both")),
                 roundedDepthIndicators = boolean(UserPreferenceKeys.ROUNDED_DEPTH_INDICATORS, true),
                 continuousDepthIndicators = boolean(UserPreferenceKeys.CONTINUOUS_DEPTH_INDICATORS, false),
+                translation = CommentTranslationPreferences(
+                    enabled = boolean(UserPreferenceKeys.TRANSLATION_ENABLED, false),
+                    mode = CommentTranslationMode.entries.find { it.name == store.getString(UserPreferenceKeys.TRANSLATION_MODE) }
+                        ?: CommentTranslationMode.Button,
+                    language = string(UserPreferenceKeys.TRANSLATION_LANGUAGE, ""),
+                    showOriginalWhileTranslating = boolean(UserPreferenceKeys.SHOW_ORIGINAL_WHILE_TRANSLATING, true),
+                ),
                 userAvatarsEnabled = boolean(UserPreferenceKeys.USER_AVATARS_ENABLED, true),
                 userAvatarOptions = UserAvatarOptions.decode(
                     string(UserPreferenceKeys.USER_AVATAR_OPTIONS, ""),

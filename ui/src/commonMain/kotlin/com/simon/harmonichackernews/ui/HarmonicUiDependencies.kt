@@ -16,6 +16,7 @@ import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.platform.LocalCalendarDate
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
 import com.simon.harmonichackernews.resources.BundledHarmonicResources
+import com.simon.harmonichackernews.ui.comments.LocalCommentTranslation
 import com.simon.harmonichackernews.ui.common.LocalHazeGlassEnabled
 import com.simon.harmonichackernews.ui.common.LocalHazePreferences
 import com.simon.harmonichackernews.settings.SurfaceEffectMode
@@ -133,6 +134,7 @@ fun ProvideHarmonicUiDependencies(
         else surfaceEffects.copy(glass = GlassPreferences())
     CompositionLocalProvider(
         LocalHarmonicUiDependencies provides dependencies,
+        LocalCommentTranslation provides dependencies.platform.commentTranslation,
         LocalHazeGlassEnabled provides (activeEffects.mode == SurfaceEffectMode.Glass),
         LocalHazePreferences provides activeEffects,
         content = content,

@@ -11,6 +11,7 @@ import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.settings.UserAvatarOptions
 
+import com.simon.harmonichackernews.ui.comments.TranslationContent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
@@ -397,6 +398,11 @@ fun CommentRow(
     userTagColor: UserTagColor = UserTagColor.Theme,
     isThreadRow: Boolean = false,
     clickActionLabel: String? = null,
+    translatedHtml: String? = null,
+    translationNotice: String? = null,
+    translationEnabled: Boolean = false,
+    waitingForTranslation: Boolean = false,
+    headerAction: (@Composable () -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val bodySize = animatedCommentValue(
@@ -423,21 +429,6 @@ fun CommentRow(
             else -> "$action $subtreeReplyCount replies"
         }
     } else null
-    val renderModel = remember(
-        comment.id,
-        comment.expandedAnchorText,
-        style.collectLinks,
-    ) {
-        CommentRenderModelCache.get(
-            commentId = comment.id,
-            expandedHtml = comment.expandedAnchorText,
-            collectLinks = style.collectLinks,
-        )
-    }
-    val references = renderModel.references
-    val contentBlocks = renderModel.contentBlocks
-    val hasInterleavedReferences = references?.hasInterleavedLinks() == true
-    val firstReferenceIndex = contentBlocks.indexOfFirst { it.getLink() != null }
     val markedColor = if (colors.surface.luminance() < 0.5f) Color(0xfffce205) else Color(0xffcc7722)
     val hiddenPreview = remember(comment.id, comment.text, textCollapsed) {
         collapsedCommentPreview(comment.id, comment.text, textCollapsed)
@@ -578,6 +569,7 @@ fun CommentRow(
         ) {
             CommentMeta(
                 author = comment.by.orEmpty(),
+                trailingAction = headerAction,
                 avatarsEnabled = style.userAvatarsEnabled,
                 avatarOptions = style.userAvatarOptions,
                 age = age,
@@ -596,6 +588,7 @@ fun CommentRow(
                 fontFamily = typography.family,
                 animateChanges = style.animateChanges,
             )
+            translationNotice?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
             AnimatedVisibility(
                 visible = !textCollapsed,
                 enter = if (style.animateChanges) {
@@ -605,52 +598,72 @@ fun CommentRow(
                     fadeOut(contentTween()) + shrinkVertically(contentTween())
                 } else androidx.compose.animation.ExitTransition.None,
             ) {
-                Column {
-                    contentBlocks.forEachIndexed { index, block ->
-                        val link = block.getLink()
-                        if (link == null) {
-                            CommentBodyText(
-                                highlightQuotes = style.highlightQuotes,
-                                scrollMonoBlocks = style.scrollMonoBlocks,
-                                quoteSpacing = style.quoteSpacing,
-                                quoteHighlightColor = style.quoteHighlightColor,
-                                quoteHighlightStyle = style.quoteHighlightStyle,
-                                quotePadding = style.quotePadding,
-                                html = block.bodyHtml.orEmpty(),
-                                modifier = if (hasInterleavedReferences && index > 0) {
-                                    Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
-                                } else {
-                                    Modifier
-                                },
-                                searchTerm = searchTerm,
-                                markedColor = markedColor,
-                                fontFamily = typography.family,
-                                fontSize = bodySize,
-                                animateSearchMatches = animateSearchMatches,
-                                onLinkClick = onLinkClick,
-                                onLinkLongClick = onLinkLongClick,
-                            )
-                        } else {
-                            ReferenceLinkRow(
-                                topPadding = if (hasInterleavedReferences) 0.dp else 4.dp,
-                                marker = link.markerLabel.orEmpty(),
-                                label = rememberReferenceLinkLabel(link, style.expandedReferenceLinks),
-                                expandedUrl = link.url.takeIf { style.expandedReferenceLinks },
-                                typography = typography,
-                                faviconUrl = rememberReferenceLinkFaviconUrl(link),
-                                modifier = when {
-                                    hasInterleavedReferences -> Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
-                                    index == firstReferenceIndex -> Modifier.padding(top = 5.dp)
-                                    else -> Modifier
-                                },
-                                suppressed = link.url == suppressedReferenceUrl,
-                                onClick = { link.url?.let(onLinkClick) },
-                                onLongClick = { bounds, sourceContentLayer ->
-                                    if (bounds.width > 0f && bounds.height > 0f) {
-                                        onReferenceLongClick(link, bounds, sourceContentLayer)
-                                    }
-                                },
-                            )
+                TranslationContent(
+                    enabled = translationEnabled, originalHtml = comment.expandedAnchorText.orEmpty(),
+                    translatedHtml = translatedHtml, waiting = waitingForTranslation, highlightQuotes = style.highlightQuotes,
+                ) { bodyHtml ->
+                    val renderModel = remember(
+                        comment.id,
+                        bodyHtml,
+                        style.collectLinks,
+                    ) {
+                        CommentRenderModelCache.get(
+                            commentId = comment.id,
+                            expandedHtml = bodyHtml,
+                            collectLinks = style.collectLinks,
+                        )
+                    }
+                    val references = renderModel.references
+                    val contentBlocks = renderModel.contentBlocks
+                    val hasInterleavedReferences = references?.hasInterleavedLinks() == true
+                    val firstReferenceIndex = contentBlocks.indexOfFirst { it.getLink() != null }
+                    Column {
+                        contentBlocks.forEachIndexed { index, block ->
+                            val link = block.getLink()
+                            if (link == null) {
+                                CommentBodyText(
+                                    highlightQuotes = style.highlightQuotes,
+                                    scrollMonoBlocks = style.scrollMonoBlocks,
+                                    quoteSpacing = style.quoteSpacing,
+                                    quoteHighlightColor = style.quoteHighlightColor,
+                                    quoteHighlightStyle = style.quoteHighlightStyle,
+                                    quotePadding = style.quotePadding,
+                                    html = block.bodyHtml.orEmpty(),
+                                    modifier = if (hasInterleavedReferences && index > 0) {
+                                        Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
+                                    } else {
+                                        Modifier
+                                    },
+                                    searchTerm = searchTerm,
+                                    markedColor = markedColor,
+                                    fontFamily = typography.family,
+                                    fontSize = bodySize,
+                                    animateSearchMatches = animateSearchMatches,
+                                    onLinkClick = onLinkClick,
+                                    onLinkLongClick = onLinkLongClick,
+                                )
+                            } else {
+                                ReferenceLinkRow(
+                                    topPadding = if (hasInterleavedReferences) 0.dp else 4.dp,
+                                    marker = link.markerLabel.orEmpty(),
+                                    label = rememberReferenceLinkLabel(link, style.expandedReferenceLinks),
+                                    expandedUrl = link.url.takeIf { style.expandedReferenceLinks },
+                                    typography = typography,
+                                    faviconUrl = rememberReferenceLinkFaviconUrl(link),
+                                    modifier = when {
+                                        hasInterleavedReferences -> Modifier.padding(top = referenceBlockTopPadding(contentBlocks, index))
+                                        index == firstReferenceIndex -> Modifier.padding(top = 5.dp)
+                                        else -> Modifier
+                                    },
+                                    suppressed = link.url == suppressedReferenceUrl,
+                                    onClick = { link.url?.let(onLinkClick) },
+                                    onLongClick = { bounds, sourceContentLayer ->
+                                        if (bounds.width > 0f && bounds.height > 0f) {
+                                            onReferenceLongClick(link, bounds, sourceContentLayer)
+                                        }
+                                    },
+                                )
+                            }
                         }
                     }
                 }

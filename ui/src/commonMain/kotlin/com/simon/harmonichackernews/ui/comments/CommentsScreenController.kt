@@ -83,6 +83,8 @@ class CommentsScreenController private constructor(
     val listener: Listener,
     val referencePreview: ReferenceLinkPreviewRuntime?,
 ) {
+    internal val translations = CommentTranslations()
+
     var screenState by mutableStateOf(
         CommentsScreenState(
             story = initialStory,

@@ -77,11 +77,16 @@ internal interface NaturalSpeech {
 private class MlKitVoice : NaturalSpeech {
     private var client: SpeechSynthesizer? = null
     private var voice: VoiceInfo? = null
+    private var reportedPlayback = false
 
     override suspend fun prepare(): Boolean {
         val synthesizer = newSynthesizer()
         client = synthesizer
-        val candidate = synthesizer.findVoice() ?: return false
+        val candidate = synthesizer.findVoice() ?: run {
+            Log.i("NaturalVoice", "No supported voice for " + Locale.getDefault().toLanguageTag())
+            return false
+        }
+        Log.d("NaturalVoice", "Selected " + candidate.voice.name + ", model status " + candidate.status)
         if (candidate.status != FeatureStatus.AVAILABLE) {
             val result = synthesizer.download(candidate.voice).firstOrNull {
                 it is DownloadStatus.DownloadCompleted || it is DownloadStatus.DownloadFailed
@@ -96,12 +101,21 @@ private class MlKitVoice : NaturalSpeech {
         val request = SpeechSynthesizerRequest(
             input = SpeechSynthesizerRequest.Input.Text(text, checkNotNull(voice)),
             audioAttributes = ReadAloudService.attributes(),
+            // The alpha SDK omits the synthetic constructor for Kotlin default arguments.
+            queueMode = SpeechSynthesizerRequest.QueueMode.QUEUE_ADD,
         )
         val terminal = checkNotNull(client).synthesize(request).firstOrNull {
             it is SpeechSynthesizerResponse.Error ||
                 (it is SpeechSynthesizerResponse.StatusUpdate && it.status != SpeechSynthesizerResponse.Status.START)
         }
-        return terminal is SpeechSynthesizerResponse.StatusUpdate && terminal.status == SpeechSynthesizerResponse.Status.DONE
+        val done = terminal is SpeechSynthesizerResponse.StatusUpdate && terminal.status == SpeechSynthesizerResponse.Status.DONE
+        if (done && !reportedPlayback) {
+            Log.d("NaturalVoice", "Playback completed with " + voice?.name)
+            reportedPlayback = true
+        } else if (terminal is SpeechSynthesizerResponse.Error) {
+            Log.w("NaturalVoice", "Synthesis error " + terminal.errorCode)
+        }
+        return done
     }
 
     override fun stop() { client?.stop() }

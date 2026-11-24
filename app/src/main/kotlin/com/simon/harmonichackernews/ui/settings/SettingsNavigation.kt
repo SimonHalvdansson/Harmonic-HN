@@ -44,7 +44,7 @@ fun SettingsShell(
     val settingsAccountState by dependencies.platform.accounts.accountState.collectAsStateWithLifecycle()
     val adaptiveInfo = currentWindowAdaptiveInfoV2()
     val configuration = LocalConfiguration.current
-    val naturalVoiceAvailable by produceState(false, configuration.locales) {
+    val naturalVoiceAvailable by produceState<Boolean?>(null, configuration.locales) {
         value = naturalVoiceAvailability()
     }
     val supportsTwoPane = configuration.smallestScreenWidthDp >= 600
@@ -73,7 +73,8 @@ fun SettingsShell(
         directive = directive,
         supportsTwoPane = supportsTwoPane,
         searchCapabilities = SettingsSearchCapabilities(twoPane = supportsTwoPane, commentsSwipeBack = true,
-            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable),
+            commentTranslation = dependencies.platform.commentTranslation != null,
+            articleCategories = showArticleCategories, naturalVoiceAvailable = naturalVoiceAvailable == true),
         isFoldable = isFoldable,
         tabletPaneHorizontalPadding = animatedExtraPanePadding(),
         onBackFromSettings = onBackFromSettings,
@@ -153,6 +154,9 @@ fun SettingsShell(
                     onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
                     onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
                     onMonoBlocksRequested = { onNavigate(SettingsSection.MonoBlocks, true) },
+                    onTranslationRequested = dependencies.platform.commentTranslation?.let {
+                        { onNavigate(SettingsSection.CommentTranslation, true) }
+                    },
                     onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
                 )
                 SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(dependencies.settings, onBack)
@@ -165,6 +169,7 @@ fun SettingsShell(
                     statusBarProtection = { color, height -> StatusBarProtection(color, height) },
                 )
                 SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(dependencies.settings, onBack, categorySettings)
+                SettingsSection.CommentTranslation -> CommentTranslationSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.UserAvatars -> UserAvatarSettingsRoute(dependencies.settings, onBack)
                 SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(
                     repository = dependencies.settings,

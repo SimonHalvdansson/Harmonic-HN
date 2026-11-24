@@ -37,6 +37,8 @@ enum class StoryBooleanPreference(internal val storageKey: String) {
 enum class StoryStringPreference { DISPLAY_STYLE, CATEGORY_TAG_LOCATION }
 
 enum class CommentBooleanPreference(internal val storageKey: String) {
+    TRANSLATION(UserPreferenceKeys.TRANSLATION_ENABLED),
+    SHOW_ORIGINAL_WHILE_TRANSLATING(UserPreferenceKeys.SHOW_ORIGINAL_WHILE_TRANSLATING),
     HIGHLIGHT_QUOTES(UserPreferenceKeys.HIGHLIGHT_QUOTES),
     SCROLL_MONO_BLOCKS(UserPreferenceKeys.SCROLL_MONO_BLOCKS),
     QUOTE_PADDING(UserPreferenceKeys.QUOTE_PADDING),
@@ -232,6 +234,8 @@ class AppSettingsRepository(
 
     fun setCommentIndicatorThickness(value: CommentIndicatorThickness) = mutator.setCommentIndicatorThickness(value)
     fun setUserAvatarOptions(value: UserAvatarOptions) = mutator.setUserAvatarOptions(value)
+    fun setTranslationMode(mode: CommentTranslationMode) = mutator.setTranslationMode(mode)
+    fun setTranslationLanguage(language: String) = mutator.setTranslationLanguage(language)
     fun setUserAvatarsEnabled(enabled: Boolean) = mutator.setUserAvatarsEnabled(enabled)
     fun setCommentsPreload(mode: WebViewPreloadMode, minimumBattery: Int) =
         mutator.setCommentsPreload(mode, minimumBattery)

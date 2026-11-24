@@ -117,6 +117,7 @@ data class CommentPreferences(
     val roundedDepthIndicators: Boolean = true,
     val continuousDepthIndicators: Boolean = false,
     val expandedReferenceLinks: Boolean = true,
+    val translation: CommentTranslationPreferences = CommentTranslationPreferences(),
     val userAvatarsEnabled: Boolean = true,
     val userAvatarOptions: UserAvatarOptions = UserAvatarOptions(),
     val markNewComments: Boolean = true,

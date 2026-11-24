@@ -68,6 +68,7 @@ import com.simon.harmonichackernews.ui.common.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.computedStateOf
+import com.simon.harmonichackernews.settings.CommentTranslationMode
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.CompositionLocalProvider
@@ -549,14 +550,11 @@ private fun CommentActionCardContent(
         }
     }
     val linkColor = MaterialTheme.colorScheme.primary
-    val body = remember(comment.expandedAnchorText, linkColor, linkListener) {
-        htmlAnnotatedString(
-            comment.expandedAnchorText.orEmpty(),
-            linkColor,
-            linkListener,
-            highlightQuotes = false,
-        )
-    }
+    val translationKey = comment.translationKey(translationTarget(settings.translation))
+    val translations = if (settings.translation.mode == CommentTranslationMode.Details) {
+        remember(comment.id) { CommentTranslations() }
+    } else controller.translations
+    val translation = translations[translationKey]
     val bodyScrollState = rememberScrollState()
 
     val cardScrollState = rememberScrollState()
@@ -626,6 +624,8 @@ private fun CommentActionCardContent(
             }
         }
 
+        translation?.notice?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+
         CommentActionTarget(
             element = CommentActionTargetElement.Body,
             modifier = Modifier.fillMaxWidth(),
@@ -653,16 +653,25 @@ private fun CommentActionCardContent(
                                 .verticalScroll(bodyScrollState)
                                 .padding(start = 6.dp, top = 14.dp, end = 12.dp, bottom = 14.dp),
                         ) {
-                            MonoBlockContent(body, settings.scrollMonoBlocks) { part, modifier ->
-                                Text(
-                                    text = part,
-                                    modifier = modifier,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontFamily = typography.family,
-                                    fontSize = commentTextSize.sp,
-                                    lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
-                                    style = textStyle,
-                                )
+                            TranslationContent(
+                                enabled = translationKey != null, originalHtml = comment.expandedAnchorText.orEmpty(),
+                                translatedHtml = translation?.visibleHtml,
+                                waiting = translation?.loading == true && settings.translation.waitingToShowTranslation(translation),
+                            ) { html ->
+                                val body = remember(html, linkColor, linkListener) {
+                                    htmlAnnotatedString(html, linkColor, linkListener, highlightQuotes = false)
+                                }
+                                MonoBlockContent(body, settings.scrollMonoBlocks) { part, modifier ->
+                                    Text(
+                                        text = part,
+                                        modifier = modifier,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontFamily = typography.family,
+                                        fontSize = commentTextSize.sp,
+                                        lineHeight = androidx.compose.ui.unit.TextUnit.Unspecified,
+                                        style = textStyle,
+                                    )
+                                }
                             }
                         }
                         ScrollableTextScrollbar(
@@ -708,44 +717,15 @@ private fun CommentActionCardContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (hasAccount) {
-                        CommentActionIcon(
-                            icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
-                            description = if (upvoted) "Upvoted" else "Vote up",
-                            loading = voteLoading &&
-                                controller.commentActionVoteLoadingAction ==
-                                CommentMenuAction.UPVOTE,
-                            enabled = !voteLoading,
-                        ) {
-                            controller.listener.onCommentAction(
-                                comment,
-                                CommentMenuAction.UPVOTE,
-                            )
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            CommentDialogVoteButton(comment.id, upvoted, downvoted, voteLoading) { direction ->
+                                controller.listener.onCommentAction(comment, direction.commentMenuAction)
+                            }
                         }
-                        CommentActionIcon(
-                            icon = if (downvoted) Res.drawable.ic_thumb_down_filled else Res.drawable.ic_thumb_down,
-                            description = if (downvoted) "Downvoted" else "Vote down",
-                            loading = voteLoading &&
-                                controller.commentActionVoteLoadingAction ==
-                                CommentMenuAction.DOWNVOTE,
-                            enabled = !voteLoading,
-                        ) {
-                            controller.listener.onCommentAction(
-                                comment,
-                                CommentMenuAction.DOWNVOTE,
-                            )
-                        }
-                        CommentActionIcon(
-                            icon = Res.drawable.ic_thumbs_up_down_unvote,
-                            description = "Unvote",
-                            loading = voteLoading &&
-                                controller.commentActionVoteLoadingAction ==
-                                CommentMenuAction.UNVOTE,
-                            enabled = !voteLoading,
-                        ) {
-                            controller.listener.onCommentAction(
-                                comment,
-                                CommentMenuAction.UNVOTE,
-                            )
+                    }
+                    if (translationKey != null) {
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            TranslationButton(translationKey, translations, inDialog = true)
                         }
                     }
                     if (bookmarksEnabled) {

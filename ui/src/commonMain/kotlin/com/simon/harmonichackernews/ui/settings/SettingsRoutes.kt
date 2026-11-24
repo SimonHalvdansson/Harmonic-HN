@@ -1,5 +1,7 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.CommentBooleanPreference
+
 import com.simon.harmonichackernews.settings.AppearanceRuntime
 import com.simon.harmonichackernews.settings.ColorSchemeStyle
 
@@ -537,6 +539,7 @@ fun CommentsSettingsRoute(
     onQuoteHighlightingRequested: () -> Unit,
     onMonoBlocksRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
+    onTranslationRequested: (() -> Unit)? = null,
     volumeNavigationSupported: Boolean = true,
     peekStoryHeaderSupported: Boolean = true,
     swipeBackSupported: Boolean = false,
@@ -567,6 +570,9 @@ fun CommentsSettingsRoute(
         onMonoBlocksRequested = onMonoBlocksRequested,
         onUserAvatarsRequested = onUserAvatarsRequested,
         onUserAvatarsEnabledChanged = repository::setUserAvatarsEnabled,
+        onTranslationRequested = onTranslationRequested,
+        translation = settings.comments.translation,
+        onTranslationEnabledChanged = { repository.setCommentBoolean(CommentBooleanPreference.TRANSLATION, it) },
         contentVersion = settings.hashCode(),
     )
     when (dialog) {

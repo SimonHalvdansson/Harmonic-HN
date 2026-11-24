@@ -422,6 +422,10 @@ class StoredSettingsMutator(
         store.putBoolean(UserPreferenceKeys.DIM_CLICKED_BACKGROUND, value)
     }
 
+    fun setTranslationMode(mode: CommentTranslationMode) = store.putString(UserPreferenceKeys.TRANSLATION_MODE, mode.name)
+
+    fun setTranslationLanguage(language: String) = store.putString(UserPreferenceKeys.TRANSLATION_LANGUAGE, language)
+
     fun setUserAvatarsEnabled(value: Boolean) {
         store.putBoolean(UserPreferenceKeys.USER_AVATARS_ENABLED, value)
     }

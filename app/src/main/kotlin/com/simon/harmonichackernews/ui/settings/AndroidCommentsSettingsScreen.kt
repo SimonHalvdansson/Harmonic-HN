@@ -12,11 +12,13 @@ fun AndroidCommentsSettingsScreen(
     onQuoteHighlightingRequested: () -> Unit,
     onMonoBlocksRequested: () -> Unit,
     onUserAvatarsRequested: () -> Unit,
+    onTranslationRequested: (() -> Unit)? = null,
     twoPane: Boolean = false,
 ) {
     CommentsSettingsRoute(
         repository = LocalHarmonicUiDependencies.current.settings,
         swipeBackSupported = true,
+        onTranslationRequested = onTranslationRequested,
         twoPane = twoPane,
         showNavigation = showNavigation,
         onBack = onBack,

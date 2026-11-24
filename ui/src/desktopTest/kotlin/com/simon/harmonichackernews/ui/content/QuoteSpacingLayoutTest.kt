@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.ui.content
 import androidx.compose.material3.Text
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.SideEffect
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.font.FontFamily
 import com.simon.harmonichackernews.settings.QuoteHighlightColor
 import com.simon.harmonichackernews.settings.QuoteHighlightStyle
 import com.simon.harmonichackernews.settings.QuoteSpacing
+import com.simon.harmonichackernews.ui.comments.TranslationContent
 import javax.swing.SwingUtilities
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,6 +31,50 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class QuoteSpacingLayoutTest {
+    @Test
+    fun translationKeepsQuoteRailVisibleDuringCrossfadeAndReservesOriginalHeightWhileWaiting() = SwingUtilities.invokeAndWait {
+        val translated = mutableStateOf<String?>(null)
+        val waiting = mutableStateOf(false)
+        var height = 0
+        val scene = ImageComposeScene(320, 220, Density(1f)) {
+            Box(Modifier.fillMaxSize().background(Color.White).padding(12.dp)) {
+                Box(Modifier.onSizeChanged { height = it.height }) {
+                    TranslationContent(
+                        enabled = true, originalHtml = "&gt; Quoted text<p>Original reply",
+                        translatedHtml = translated.value, waiting = waiting.value, highlightQuotes = true,
+                    ) { html ->
+                        CommentBodyText(
+                            highlightQuotes = true, quoteSpacing = QuoteSpacing.COMFORTABLE,
+                            quoteHighlightColor = QuoteHighlightColor.MATERIAL,
+                            quoteHighlightStyle = QuoteHighlightStyle.SIDE_LINE,
+                            html = html, searchTerm = "", markedColor = Color.Yellow,
+                            fontFamily = FontFamily.SansSerif, fontSize = 16f,
+                            animateSearchMatches = false, onLinkClick = {}, onLinkLongClick = { _, _, _ -> },
+                        )
+                    }
+                }
+            }
+        }
+        var time = 0L
+        fun railPixel(): Int = scene.render(time.also { time += 16_666_667 }).use {
+            val pixel = IntArray(1)
+            it.toComposeImageBitmap().readPixels(pixel, startX = 8, startY = 20, width = 1, height = 1)
+            pixel[0]
+        }
+        try {
+            repeat(30) { railPixel() }
+            val originalHeight = height
+            assertTrue(originalHeight > 20)
+            translated.value = "&gt; Citation<p>Réponse"
+            repeat(40) { assertTrue(railPixel() != -1, "The quote rail must remain visible throughout translation") }
+            translated.value = null
+            waiting.value = true
+            repeat(40) { railPixel() }
+            assertEquals(originalHeight, height)
+            assertEquals(-1, railPixel(), "The original quote must be invisible while waiting")
+        } finally { scene.close() }
+    }
+
     @Test
     fun quotePaddingAnimatesThroughIntermediateHeightsInBothDirections() = SwingUtilities.invokeAndWait {
         val padding = mutableStateOf(false)

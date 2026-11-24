@@ -117,6 +117,7 @@ fun PortableSettingsDetail(
         SettingsSection.QuoteHighlighting -> QuoteHighlightingSettingsRoute(app.settings, onBack)
         SettingsSection.MonoBlocks -> MonoBlocksSettingsRoute(app.settings, onBack)
         SettingsSection.ClickedPosts -> ClickedPostsSettingsRoute(app.settings, onBack, app.articleCategorySettings)
+        SettingsSection.CommentTranslation -> CommentTranslationSettingsRoute(app.settings, onBack)
         SettingsSection.UserAvatars -> UserAvatarSettingsRoute(app.settings, onBack)
         SettingsSection.ThreadDepth -> ThreadDepthIndicatorsSettingsRoute(app.settings, onBack)
         SettingsSection.WebLinks -> WebLinksSettingsRoute(

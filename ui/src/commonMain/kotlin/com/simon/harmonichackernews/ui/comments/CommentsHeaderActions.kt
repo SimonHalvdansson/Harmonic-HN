@@ -24,6 +24,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.Alignment
+import com.simon.harmonichackernews.presentation.VoteDirection
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.semantics.Role
@@ -396,16 +397,59 @@ internal fun HeaderVoteMenu(
     downvoted: Boolean,
     onAction: (CommentsHeaderAction) -> Unit,
 ) {
-    fun select(action: CommentsHeaderAction) {
+    VoteDirectionMenu(expanded, onDismiss, isComment, upvoted, downvoted) { direction ->
+        onAction(when (direction) {
+            VoteDirection.UP -> CommentsHeaderAction.UPVOTE
+            VoteDirection.DOWN -> CommentsHeaderAction.DOWNVOTE
+            VoteDirection.REMOVE -> CommentsHeaderAction.UNVOTE
+        })
+    }
+}
+
+@Composable
+internal fun CommentDialogVoteButton(
+    itemId: Int,
+    upvoted: Boolean,
+    downvoted: Boolean,
+    loading: Boolean,
+    onVote: (VoteDirection) -> Unit,
+) {
+    var menuOpen by remember(itemId) { mutableStateOf(false) }
+    val voted = upvoted || downvoted
+    Box {
+        HeaderActionButton(
+            action = HeaderAction(
+                icon = when {
+                    downvoted -> Res.drawable.ic_thumb_down_filled
+                    upvoted -> Res.drawable.ic_thumb_up_filled
+                    else -> Res.drawable.ic_thumb_up
+                },
+                label = if (voted) "Remove vote" else "Upvote",
+                action = CommentsHeaderButton.VOTE, loading = loading, active = voted,
+            ),
+            modifier = Modifier.size(48.dp), itemId = itemId, onLongClick = { menuOpen = true },
+        ) { onVote(if (voted) VoteDirection.REMOVE else VoteDirection.UP) }
+        VoteDirectionMenu(menuOpen, { menuOpen = false }, true, upvoted, downvoted, onVote)
+    }
+}
+
+@Composable
+private fun VoteDirectionMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    isComment: Boolean,
+    upvoted: Boolean,
+    downvoted: Boolean,
+    onAction: (VoteDirection) -> Unit,
+) {
+    fun select(action: VoteDirection) {
         onDismiss()
         onAction(action)
     }
     HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
-        HeaderChoice("Upvote", Res.drawable.ic_thumb_up, !upvoted) { select(CommentsHeaderAction.UPVOTE) }
-        HeaderChoice("Downvote", Res.drawable.ic_thumb_down, isComment && !downvoted) { select(CommentsHeaderAction.DOWNVOTE) }
-        if (upvoted || downvoted) {
-            HeaderChoice("Remove vote", Res.drawable.ic_thumbs_up_down_unvote, true) { select(CommentsHeaderAction.UNVOTE) }
-        }
+        HeaderChoice("Upvote", Res.drawable.ic_thumb_up, !upvoted) { select(VoteDirection.UP) }
+        HeaderChoice("Unvote", Res.drawable.ic_thumbs_up_down_unvote, upvoted || downvoted) { select(VoteDirection.REMOVE) }
+        HeaderChoice("Downvote", Res.drawable.ic_thumb_down, isComment && !downvoted) { select(VoteDirection.DOWN) }
     }
 }
 

@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.resources.settings_section_comment_translation
 import com.simon.harmonichackernews.resources.settings_section_user_avatars
 import com.simon.harmonichackernews.resources.settings_section_quote_highlighting
 import com.simon.harmonichackernews.resources.settings_section_mono_blocks
@@ -54,6 +55,7 @@ enum class SettingsSection(
     ThreadDepth("thread_depth", Res.string.settings_section_thread_depth),
     MonoBlocks("mono_blocks", Res.string.settings_section_mono_blocks),
     QuoteHighlighting("quote_highlighting", Res.string.settings_section_quote_highlighting),
+    CommentTranslation("comment_translation", Res.string.settings_section_comment_translation),
     UserAvatars("user_avatars", Res.string.settings_section_user_avatars),
     WebLinks("web_links", Res.string.settings_section_web_links),
     ReaderMode("reader_mode", Res.string.settings_section_reader_mode),

@@ -115,6 +115,8 @@ haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
 haze-glass = { module = "dev.chrisbanes.haze:haze-glass", version.ref = "haze" }
 
 mlkit-genai-summarization = "com.google.mlkit:genai-summarization:1.0.0-beta1"
+mlkit-translate = "com.google.mlkit:translate:17.0.3"
+mlkit-language-id = "com.google.mlkit:language-id:17.0.6"
 mlkit-genai-tts = "com.google.mlkit:genai-text-to-speech:1.0.0-alpha1"
 mlkit-genai-embedding = "com.google.mlkit:genai-embedding:1.0.0-alpha1"
 mlkit-genai-prompt = "com.google.mlkit:genai-prompt:1.0.0-beta5"

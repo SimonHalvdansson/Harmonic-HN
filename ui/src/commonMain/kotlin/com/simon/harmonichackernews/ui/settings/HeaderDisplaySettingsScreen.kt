@@ -734,12 +734,25 @@ internal class HeaderPreviewActions : SavedItemStateReader, CommentsScreenContro
         private set
     private var bookmarked by mutableStateOf(false)
     private var favorited by mutableStateOf(false)
+    var downvoted by mutableStateOf(false)
+        private set
     private var upvoted by mutableStateOf(false)
     override fun isBookmarked(itemId: Int) = bookmarked
     override fun isFavorited(itemId: Int) = favorited
     override fun isUpvoted(itemId: Int, isComment: Boolean) = upvoted
     override fun onToggleComment(comment: PortableCommentItem, position: Int) = Unit
-    override fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction) = Unit
+    override fun onCommentAction(comment: PortableCommentItem, action: CommentMenuAction) {
+        when (action) {
+            CommentMenuAction.BOOKMARK -> bookmarked = !bookmarked
+            CommentMenuAction.FAVORITE -> favorited = !favorited
+            CommentMenuAction.UPVOTE, CommentMenuAction.DOWNVOTE, CommentMenuAction.UNVOTE -> {
+                upvoted = action == CommentMenuAction.UPVOTE
+                downvoted = action == CommentMenuAction.DOWNVOTE
+            }
+            else -> return
+        }
+        version++
+    }
     override fun onCommentActionOverlayVisibilityChanged(showing: Boolean) = Unit
     override fun onLinkPreviewOverlayVisibilityChanged(showing: Boolean) = Unit
     override fun onHeaderClick() = Unit

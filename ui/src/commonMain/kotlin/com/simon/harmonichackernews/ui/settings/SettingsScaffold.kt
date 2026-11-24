@@ -208,6 +208,7 @@ fun SettingsListScreen(
                                     selectedSection == SettingsSection.ThreadDepth ||
                                     selectedSection == SettingsSection.QuoteHighlighting ||
                                     selectedSection == SettingsSection.MonoBlocks ||
+                                    selectedSection == SettingsSection.CommentTranslation ||
                                     selectedSection == SettingsSection.UserAvatars) ||
                                 entry.section == SettingsSection.WebLinks &&
                                 selectedSection == SettingsSection.ReaderMode ||

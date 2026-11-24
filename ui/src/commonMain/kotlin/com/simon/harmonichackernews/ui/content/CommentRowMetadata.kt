@@ -8,11 +8,14 @@ import com.simon.harmonichackernews.settings.UserAvatarOptions
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -66,6 +69,7 @@ internal fun CommentMeta(
     animateChanges: Boolean,
     isNew: Boolean = false,
     tagColor: UserTagColor = UserTagColor.Theme,
+    trailingAction: (@Composable () -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val metaColor = when {
@@ -108,7 +112,7 @@ internal fun CommentMeta(
     // Keep the pill whole while it fades. Release its space only after it is invisible;
     // the reverse transition reserves the full space before revealing it again.
     val replyCountWidthProgress = (hiddenReplyCountProgress * 2f).coerceIn(0f, 1f)
-    val replyCountAlpha = if (isNew) {
+    val replyCountAlpha = if (isNew || trailingAction != null) {
         (hiddenReplyCountProgress * 2f - 1f).coerceIn(0f, 1f)
     } else hiddenReplyCountProgress
     val layoutDirection = LocalLayoutDirection.current
@@ -117,59 +121,60 @@ internal fun CommentMeta(
         modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AnimatedContent(
-            targetState = avatarsEnabled,
-            transitionSpec = {
-                (fadeIn(if (animateChanges) contentTween() else snap()) togetherWith
-                    fadeOut(if (animateChanges) contentTween() else snap())).using(
-                    SizeTransform(clip = true) { _, _ -> if (animateChanges) contentTween() else snap() },
-                )
-            },
-            contentAlignment = Alignment.CenterStart,
-            label = "comment user avatar",
-        ) { showAvatars ->
-            if (!showAvatars) {
-                Box(Modifier.size(0.dp))
-            } else {
-                UserAvatar(author, Modifier.padding(end = 6.dp).size(22.dp), avatarOptions)
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            AnimatedContent(
+                targetState = avatarsEnabled,
+                transitionSpec = {
+                    (fadeIn(if (animateChanges) contentTween() else snap()) togetherWith
+                        fadeOut(if (animateChanges) contentTween() else snap())).using(
+                        SizeTransform(clip = true) { _, _ -> if (animateChanges) contentTween() else snap() },
+                    )
+                },
+                contentAlignment = Alignment.CenterStart,
+                label = "comment user avatar",
+            ) { showAvatars ->
+                if (!showAvatars) {
+                    Box(Modifier.size(0.dp))
+                } else {
+                    UserAvatar(author, Modifier.padding(end = 6.dp).size(22.dp), avatarOptions)
+                }
             }
-        }
-        Row(
-            modifier = Modifier
-                .clip(metaShape)
-                .background(metaBackground)
-                .border(1.dp, colors.outlineVariant.copy(alpha = metaBorderAlpha), metaShape)
-                .padding(horizontal = metaHorizontalPadding, vertical = metaVerticalPadding),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(author, color = metaColor, fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            if (byOp) CommentAuthorBadge("OP", metaColor, fontFamily)
-            if (byUser) CommentAuthorBadge("YOU", metaColor, fontFamily)
-            Text(age, modifier = Modifier.padding(start = 4.dp), color = metaColor, fontFamily = fontFamily, fontSize = 13.sp)
-            if (!userTag.isNullOrBlank()) {
+            Row(
+                modifier = Modifier
+                    .clip(metaShape)
+                    .background(metaBackground)
+                    .border(1.dp, colors.outlineVariant.copy(alpha = metaBorderAlpha), metaShape)
+                    .padding(horizontal = metaHorizontalPadding, vertical = metaVerticalPadding),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(author, color = metaColor, fontFamily = fontFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                if (byOp) CommentAuthorBadge("OP", metaColor, fontFamily)
+                if (byUser) CommentAuthorBadge("YOU", metaColor, fontFamily)
+                Text(age, modifier = Modifier.padding(start = 4.dp), color = metaColor, fontFamily = fontFamily, fontSize = 13.sp)
+                if (!userTag.isNullOrBlank()) {
+                    Text(
+                        " • $userTag",
+                        color = userTagColor(tagColor),
+                        fontFamily = fontFamily,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
+            if (hiddenPreview != null) {
                 Text(
-                    " • $userTag",
-                    color = userTagColor(tagColor),
+                    hiddenPreview,
+                    modifier = Modifier.weight(1f).padding(start = 6.dp),
+                    color = colors.onSurfaceVariant,
                     fontFamily = fontFamily,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        if (hiddenPreview != null) {
-            Text(
-                hiddenPreview,
-                modifier = Modifier.weight(1f).padding(start = 6.dp),
-                color = colors.onSurfaceVariant,
-                fontFamily = fontFamily,
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        } else {
-            Box(Modifier.weight(1f))
-        }
+        trailingAction?.invoke()
         AnimatedVisibility(
             visible = isNew,
             modifier = Modifier.offset(y = (-2).dp).graphicsLayer {
@@ -183,8 +188,10 @@ internal fun CommentMeta(
                     translationX = 0f
                 }
             },
-            enter = fadeIn(if (animateChanges) tween(120) else snap()),
-            exit = fadeOut(if (animateChanges) tween(120) else snap()),
+            enter = fadeIn(if (animateChanges) tween(120) else snap()) +
+                expandHorizontally(if (animateChanges) contentTween() else snap()),
+            exit = fadeOut(if (animateChanges) tween(120) else snap()) +
+                shrinkHorizontally(if (animateChanges) contentTween() else snap()),
         ) {
             Box(
                 Modifier.size(6.dp)
@@ -196,6 +203,7 @@ internal fun CommentMeta(
             Text(
                 "+${subtreeReplyCount ?: 0}",
                 modifier = Modifier
+                    .animateContentSize(if (animateChanges) contentTween() else snap(), Alignment.CenterEnd)
                     .padding(start = if (isNew) 6.dp else 0.dp)
                     .graphicsLayer { alpha = replyCountAlpha }
                     .clip(RoundedCornerShape(7.dp))
@@ -211,7 +219,7 @@ internal fun CommentMeta(
                 style = compactCommentTextStyle,
             )
         }
-        if (isNew && subtreeReplyCount != null) {
+        if ((isNew || trailingAction != null) && subtreeReplyCount != null) {
             // Keep the full pill measured, including its gap. A single progress value owns
             // opacity and occupied width; no visibility-content removal can move the dot
             // again at the end of the transition or when its direction is reversed.

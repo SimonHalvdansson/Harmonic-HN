@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.settings.CommentTranslationMode
 import com.simon.harmonichackernews.settings.UserTagsSnapshot
 
 import com.simon.harmonichackernews.ui.common.statusBarScrollToTop
@@ -242,6 +243,11 @@ fun CommentsScreen(
         animateComments = animateComments,
     )
     val animatedRows = rememberAnimatedCommentRows(visibleComments, listState, animateComments)
+    val translationTarget = translationTarget(settings.translation)
+    val mode = settings.translation.mode
+    if (translationTarget != null && mode == CommentTranslationMode.Automatic) {
+        TranslateVisibleComments(controller.translations, translationTarget, listState, animatedRows.rows, settings.collapseParent)
+    }
     val animateCommentPlacement = rememberCommentPlacementAnimation(visibleComments, animateComments)
     PrefetchCommentContent(
         listState = listState,
@@ -506,8 +512,17 @@ fun CommentsScreen(
                 val suppressRow = suppressed && !keepActionSourceVisible
                 val suppressedReferenceUrl =
                     controller.suppressedReferenceUrlForComment(item.comment.id)
+                val key = item.comment.translationKey(translationTarget?.takeUnless { mode == CommentTranslationMode.Details })
+                val translation = controller.translations[key]
                 CommentRow(
                     comment = item.comment,
+                    translatedHtml = translation?.visibleHtml,
+                    waitingForTranslation = key != null && settings.translation.waitingToShowTranslation(translation),
+                    translationNotice = translation?.notice.takeIf { mode == CommentTranslationMode.Button },
+                    translationEnabled = key != null,
+                    headerAction = if (key != null) {
+                        { TranslationButton(key, controller.translations) }
+                    } else null,
                     style = itemStyle,
                     typography = rowTypography,
                     age = remember(item.comment.time, resumedAt) {

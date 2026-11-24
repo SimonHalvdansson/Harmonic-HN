@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.settings
 
+import com.simon.harmonichackernews.settings.CommentTranslationPreferences
 import com.simon.harmonichackernews.settings.QuoteSpacing
 import com.simon.harmonichackernews.settings.QuoteHighlightColor
 import com.simon.harmonichackernews.settings.QuoteHighlightStyle
@@ -129,6 +130,9 @@ fun CommentsSettingsScreen(
     peekStoryHeaderSupported: Boolean = true,
     swipeBackSupported: Boolean = false,
     twoPane: Boolean = false,
+    onTranslationRequested: (() -> Unit)? = null,
+    translation: CommentTranslationPreferences = CommentTranslationPreferences(),
+    onTranslationEnabledChanged: (Boolean) -> Unit = {},
     focusHideComments: Boolean = LocalSettingsFocusHideComments.current,
 ) {
     val listState = rememberSettingsListState()
@@ -248,6 +252,16 @@ fun CommentsSettingsScreen(
             }
         }
         settingsCategory("Interactions") {
+            if (onTranslationRequested != null) row {
+                NavigationSwitchSettingRow(
+                    title = "Comment translation",
+                    summary = if (translation.enabled) translation.mode.label else "Off",
+                    icon = Res.drawable.ic_translate,
+                    checked = translation.enabled,
+                    onClick = onTranslationRequested,
+                    onCheckedChange = onTranslationEnabledChanged,
+                )
+            }
             row {
                 BooleanRow("Hide text of collapsed comments", Res.drawable.ic_comment, state.collapseParent, CommentsBooleanSetting.CollapseParent, onBooleanChanged)
             }

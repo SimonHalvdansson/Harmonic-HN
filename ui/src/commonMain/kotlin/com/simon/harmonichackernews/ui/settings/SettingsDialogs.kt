@@ -321,6 +321,7 @@ fun SingleChoiceDialog(
     selected: String,
     onDismiss: () -> Unit,
     showDoneButton: Boolean = false,
+    maxListHeight: Dp = 480.dp,
     onSelected: (String) -> Unit,
 ) {
     SettingsAlertDialog(
@@ -332,7 +333,7 @@ fun SingleChoiceDialog(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 480.dp)
+                    .heightIn(max = maxListHeight)
                     .selectableGroup(),
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {

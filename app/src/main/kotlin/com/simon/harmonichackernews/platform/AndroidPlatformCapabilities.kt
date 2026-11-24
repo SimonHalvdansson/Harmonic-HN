@@ -210,6 +210,7 @@ fun createAndroidPlatformDependencies(
         timeFormatting = AndroidTimeFormatter(context),
         credentialDispatcher = Dispatchers.IO,
         replyNotifications = AndroidReplyNotificationPlatform(context),
+        commentTranslation = androidCommentTranslation,
         localSummary = createAndroidLocalSummaryEngine(context, localModels),
     )
 }

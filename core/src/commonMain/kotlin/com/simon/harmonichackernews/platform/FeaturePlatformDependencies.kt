@@ -24,6 +24,7 @@ data class AppPlatformDependencies(
     val credentialDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val replyNotifications: ReplyNotificationPlatform? = null,
     val localSummary: LocalSummaryEngine? = null,
+    val commentTranslation: CommentTranslationService? = null,
     val textDocuments: TextDocumentService? = null,
 )
 
