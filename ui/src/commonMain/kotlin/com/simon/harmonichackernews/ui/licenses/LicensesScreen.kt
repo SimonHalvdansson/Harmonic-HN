@@ -79,6 +79,7 @@ import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.ui.settings.LocalSettingsLicenseUrl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import com.simon.harmonichackernews.ui.common.HarmonicTopAppBar
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
