@@ -755,6 +755,8 @@ internal class HeaderPreviewActions : SavedItemStateReader, CommentsScreenContro
             CommentsHeaderAction.BOOKMARK -> bookmarked = !bookmarked
             CommentsHeaderAction.FAVORITE -> favorited = !favorited
             CommentsHeaderAction.VOTE -> upvoted = !upvoted
+            CommentsHeaderAction.UPVOTE -> upvoted = true
+            CommentsHeaderAction.DOWNVOTE, CommentsHeaderAction.UNVOTE -> upvoted = false
             CommentsHeaderAction.REFRESH -> refreshVersion++
             CommentsHeaderAction.USER, CommentsHeaderAction.REPLY, CommentsHeaderAction.SUMMARIZE -> Unit
         }

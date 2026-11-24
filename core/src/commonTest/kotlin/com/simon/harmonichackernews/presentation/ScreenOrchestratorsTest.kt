@@ -61,6 +61,20 @@ class ScreenOrchestratorsTest {
     }
 
     @Test
+    fun headerOffersDownvotesOnCommentsAndCanUndoThem() {
+        val item = story()
+        val context = CommentsHeaderContext(item, hasAccount = true)
+        assertTrue(CommentsUiOrchestrator.header(CommentsHeaderAction.DOWNVOTE, context).actions.isEmpty())
+        assertEquals(listOf(CommentsAction.SetStoryVote(item.id, VoteDirection.UP)),
+            CommentsUiOrchestrator.header(CommentsHeaderAction.UPVOTE, context).actions)
+        item.isComment = true
+        assertEquals(listOf(CommentsAction.VoteComment(item.id, "down", false)),
+            CommentsUiOrchestrator.header(CommentsHeaderAction.DOWNVOTE, context).actions)
+        assertEquals(listOf(CommentsAction.VoteComment(item.id, "un", true)),
+            CommentsUiOrchestrator.header(CommentsHeaderAction.UNVOTE, context.copy(downvoted = true)).actions)
+    }
+
+    @Test
     fun commentsMoreFilterPolicyIsShared() {
         val story = story()
         val show = CommentsUiOrchestrator.more(

@@ -131,7 +131,8 @@ class CommentsScreenController private constructor(
     val readerModeEnabled: Boolean get() = screenState.readerModeEnabled
     val showSheetControls: Boolean get() = screenState.showSheetControls
     val currentSorting: String get() = screenState.currentSorting
-    val storyVoteLoading: Boolean get() = screenState.storyVoteLoading
+    val storyVoteLoading: Boolean get() = screenState.storyVoteLoading || (story.isComment && story.id > 0 && story.id == commentActionVoteLoadingId)
+    val headerDownvoted: Boolean get() = story.isComment && story.id in commentActionDownvotedIds
     val storyCommented: Boolean get() = screenState.storyCommented
     val storyFavoriteLoading: Boolean get() = screenState.storyFavoriteLoading
     val pollVoteInFlightOptionId: Int? get() = screenState.pollVoteInFlightOptionId

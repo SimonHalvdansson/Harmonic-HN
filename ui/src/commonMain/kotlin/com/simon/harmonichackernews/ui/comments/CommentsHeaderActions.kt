@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.key
 import com.simon.harmonichackernews.ui.content.ContentMotionEasing
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -90,7 +91,9 @@ fun CommentsHeaderActions(
     var moreExpanded by remember { mutableStateOf(false) }
     var sortExpanded by remember { mutableStateOf(false) }
     var archiveExpanded by remember { mutableStateOf(false) }
+    var choices by remember(story.id) { mutableStateOf<CommentsHeaderButton?>(null) }
     val dismissMenus = {
+        choices = null
         shareExpanded = false
         moreExpanded = false
     }
@@ -103,7 +106,7 @@ fun CommentsHeaderActions(
             archiveExpanded = false
         }
     }
-    val menuVisible = shareExpanded || moreExpanded
+    val menuVisible = shareExpanded || moreExpanded || choices != null
     // The desktop window receives an unconsumed Escape after Compose dismisses a dropdown. Keep
     // the host-facing flag synchronized after composition so that same key cannot also navigate
     // away from the story.
@@ -145,7 +148,7 @@ fun CommentsHeaderActions(
         }
         val label = when (button) {
             CommentsHeaderButton.COMMENT -> if (story.isComment) "Reply to comment" else "Reply to post"
-            CommentsHeaderButton.VOTE -> if (upvoted) "Remove vote" else "Upvote"
+            CommentsHeaderButton.VOTE -> if (upvoted || controller.headerDownvoted) "Remove vote" else "Upvote"
             CommentsHeaderButton.FAVORITE -> if (favorited) "Remove favorite" else "Favorite"
             CommentsHeaderButton.BOOKMARK -> if (bookmarked) "Remove bookmark" else "Bookmark"
             CommentsHeaderButton.SIDE_BY_SIDE -> if (controller.sideBySideActive) "Exit side by side" else button.label
@@ -154,6 +157,7 @@ fun CommentsHeaderActions(
             else -> button.label
         }
         val icon = when {
+            button == CommentsHeaderButton.VOTE && controller.headerDownvoted -> Res.drawable.ic_thumb_down_filled
             button == CommentsHeaderButton.VOTE && upvoted -> Res.drawable.ic_thumb_up_filled
             button == CommentsHeaderButton.FAVORITE && favorited -> Res.drawable.ic_star_filled
             button == CommentsHeaderButton.BOOKMARK && bookmarked -> Res.drawable.ic_bookmark_filled
@@ -240,12 +244,31 @@ fun CommentsHeaderActions(
             ) {
                 Box {
                     HeaderActionButton(action, Modifier.width(buttonWidth.dp).height(CommentsHeaderActionButtonSize), story.id,
-                        onLongClick = if (action.action == CommentsHeaderButton.SUMMARIZE && discussionSummaryAvailable &&
-                            !discussion.running && !controller.discussionRequestBlocked) {
-                            { controller.listener.onSummarizeDiscussion() }
-                        } else null,
-                    ) {
-                        onAction(action.action)
+                        onLongClick = when (action.action) {
+                            CommentsHeaderButton.VOTE, CommentsHeaderButton.SUMMARIZE -> { -> choices = action.action }
+                            else -> null
+                        },
+                    ) { onAction(action.action) }
+                    if (action.action == CommentsHeaderButton.VOTE) {
+                        HeaderVoteMenu(choices == action.action, dismissMenus, story.isComment, upvoted,
+                            controller.headerDownvoted, controller.listener::onHeaderAction)
+                    }
+                    if (action.action == CommentsHeaderButton.SUMMARIZE) {
+                        HarmonicDropdownMenu(expanded = choices == action.action, onDismiss = dismissMenus) {
+                            if (articleSummaryAvailable) {
+                                HeaderChoice("Summarize article", Res.drawable.ic_auto_awesome, !controller.storySummaryLoading) {
+                                    dismissMenus()
+                                    controller.listener.onHeaderAction(CommentsHeaderAction.SUMMARIZE)
+                                }
+                            }
+                            if (discussionSummaryAvailable) {
+                                HeaderChoice("Summarize discussion", Res.drawable.ic_assistant,
+                                    !discussion.running && !controller.discussionRequestBlocked) {
+                                    dismissMenus()
+                                    controller.listener.onSummarizeDiscussion()
+                                }
+                            }
+                        }
                     }
                     if (action.action == CommentsHeaderButton.SHARE) {
                         ShareMenu(shareExpanded, story.isLink, { shareExpanded = false }, controller.listener::onShareAction)
@@ -312,7 +335,7 @@ private fun HeaderActionButton(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    HarmonicTooltip(action.label) {
+    HarmonicTooltip(action.label, enabled = onLongClick == null) {
         val content: @Composable () -> Unit = content@{
             if (action.action == CommentsHeaderButton.BOOKMARK) {
                 AnimatedBookmarkIcon(
@@ -354,7 +377,7 @@ private fun HeaderActionButton(
                     enabled = !action.loading,
                     role = Role.Button,
                     onClick = onClick,
-                    onLongClickLabel = "Summarize discussion",
+                    onLongClickLabel = if (action.action == CommentsHeaderButton.VOTE) "Voting options" else "Summary options",
                     onLongClick = onLongClick,
                 ),
                 contentAlignment = Alignment.Center,
@@ -363,6 +386,38 @@ private fun HeaderActionButton(
     }
 }
 
+
+@Composable
+internal fun HeaderVoteMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    isComment: Boolean,
+    upvoted: Boolean,
+    downvoted: Boolean,
+    onAction: (CommentsHeaderAction) -> Unit,
+) {
+    fun select(action: CommentsHeaderAction) {
+        onDismiss()
+        onAction(action)
+    }
+    HarmonicDropdownMenu(expanded = expanded, onDismiss = onDismiss) {
+        HeaderChoice("Upvote", Res.drawable.ic_thumb_up, !upvoted) { select(CommentsHeaderAction.UPVOTE) }
+        HeaderChoice("Downvote", Res.drawable.ic_thumb_down, isComment && !downvoted) { select(CommentsHeaderAction.DOWNVOTE) }
+        if (upvoted || downvoted) {
+            HeaderChoice("Remove vote", Res.drawable.ic_thumbs_up_down_unvote, true) { select(CommentsHeaderAction.UNVOTE) }
+        }
+    }
+}
+
+@Composable
+private fun HeaderChoice(label: String, icon: DrawableResource, enabled: Boolean, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { HarmonicMenuText(label, color = LocalContentColor.current) },
+        leadingIcon = { Icon(painterResource(icon), null, Modifier.size(24.dp)) },
+        enabled = enabled,
+        onClick = onClick,
+    )
+}
 
 @Composable
 private fun ShareMenu(

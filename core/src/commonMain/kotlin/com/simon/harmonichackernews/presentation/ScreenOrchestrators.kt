@@ -44,6 +44,8 @@ sealed interface CommentsPlatformEffect {
 data class CommentsHeaderContext(
     val story: Story,
     val hasAccount: Boolean,
+    val upvoted: Boolean = false,
+    val downvoted: Boolean = false,
 )
 
 data class CommentActionContext(
@@ -86,8 +88,24 @@ object CommentsUiOrchestrator {
                     ),
                 )
             }
-            CommentsHeaderAction.VOTE -> accountAction(context.hasAccount) {
-                CommentsAction.ToggleStoryVote(story.id, story.isComment)
+            CommentsHeaderAction.VOTE, CommentsHeaderAction.UPVOTE,
+            CommentsHeaderAction.DOWNVOTE, CommentsHeaderAction.UNVOTE -> {
+                val direction = when (action) {
+                    CommentsHeaderAction.DOWNVOTE -> VoteDirection.DOWN
+                    CommentsHeaderAction.UNVOTE -> VoteDirection.REMOVE
+                    CommentsHeaderAction.UPVOTE -> VoteDirection.UP
+                    else -> if (context.upvoted || context.downvoted) VoteDirection.REMOVE else VoteDirection.UP
+                }
+                when {
+                    direction == VoteDirection.DOWN && !story.isComment -> FeatureDecision()
+                    story.isComment -> accountAction(context.hasAccount) {
+                        CommentsAction.VoteComment(story.id, direction.wireValue, context.downvoted)
+                    }
+                    action == CommentsHeaderAction.VOTE -> accountAction(context.hasAccount) {
+                        CommentsAction.ToggleStoryVote(story.id, false)
+                    }
+                    else -> accountAction(context.hasAccount) { CommentsAction.SetStoryVote(story.id, direction) }
+                }
             }
             CommentsHeaderAction.FAVORITE -> accountAction(context.hasAccount) {
                 CommentsAction.ToggleStoryFavorite(story.id, story.isComment)

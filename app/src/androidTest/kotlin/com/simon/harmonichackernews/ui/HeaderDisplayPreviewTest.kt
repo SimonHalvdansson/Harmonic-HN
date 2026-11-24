@@ -76,6 +76,17 @@ class HeaderDisplayPreviewTest {
         } finally { scene.close() }
     }
 
+    @Test fun longPressOnVoteOffersDirectionsWithoutCastingAVote() {
+        compose.setContent {
+            val palette = HarmonicThemeCatalog.resolve("material_light", false)
+            HarmonicTheme(palette.colorScheme, palette.dark) { HeaderDisplayPreview(settings(true), true, {}) }
+        }
+        compose.onNodeWithContentDescription("Upvote").performTouchInput { longClick() }
+        compose.onNodeWithText("Downvote").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithText("Upvote").assertIsEnabled().performClick()
+        compose.onNodeWithContentDescription("Remove vote").assertExists()
+    }
+
     @Test fun hiddenButtonsStayActionableInOverflowIncludingShare() {
         val preferences = settings(true).copy(headerButtons = CommentsHeaderButtons(mapOf(
             CommentsHeaderButton.FAVORITE to false, CommentsHeaderButton.SHARE to false,

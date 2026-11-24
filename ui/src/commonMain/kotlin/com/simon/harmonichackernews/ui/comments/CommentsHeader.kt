@@ -649,6 +649,8 @@ fun CommentsHeader(
                                             storyPosterTagColor = storyPosterTagColor,
                                             textStyle = textStyle,
                                             onAuthorClick = { controller.listener.onHeaderAction(CommentsHeaderAction.USER) },
+                                            downvoted = controller.headerDownvoted,
+                                            onVoteChoice = controller.listener::onHeaderAction,
                                             onVoteClick = { controller.listener.onHeaderAction(CommentsHeaderAction.VOTE) },
                                             onReplyClick = { controller.listener.onHeaderAction(CommentsHeaderAction.REPLY) },
                                             upvoted = controller.isUpvoted(story.id, story.isComment),

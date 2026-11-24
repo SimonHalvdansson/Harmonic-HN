@@ -197,10 +197,6 @@ internal fun SummaryCard(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .animateContentSize(
-                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                alignment = Alignment.TopStart,
-            )
             .onGloballyPositioned { sourceCoordinates = it }
             .drawWithContent {
                 // Keep recording the themed foreground while Ask owns the visible surface,
@@ -215,6 +211,10 @@ internal fun SummaryCard(
                 sourceLayer.record { this@drawWithContent.drawContent() }
                 drawLayer(sourceLayer)
             }
+            .animateContentSize(
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                alignment = Alignment.TopStart,
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(

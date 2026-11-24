@@ -90,6 +90,7 @@ sealed interface CommentsAction {
     data class RequestCommentActions(val comment: PortableCommentItem) : CommentsAction
     data class ToggleBookmark(val itemId: Int) : CommentsAction
     data class ToggleStoryVote(val itemId: Int, val isComment: Boolean) : CommentsAction
+    data class SetStoryVote(val itemId: Int, val direction: VoteDirection) : CommentsAction
     data class ToggleStoryFavorite(val itemId: Int, val isComment: Boolean) : CommentsAction
     data class ToggleCommentFavorite(val commentId: Int) : CommentsAction
     data class VoteComment(
@@ -300,6 +301,12 @@ class CommentsPresenter(
                     itemId = action.itemId,
                     isComment = action.isComment,
                 ) }
+            is CommentsAction.SetStoryVote -> performSavedItemAction(
+                request = CommentsSavedItemRequest.StoryVote(action.itemId),
+                kind = SavedItemActionKind.VOTE,
+            ) {
+                savedItemActions.updateVoteAndExecuteAtomic(action.itemId, isComment = false, direction = action.direction.wireValue)
+            }
             is CommentsAction.ToggleStoryFavorite -> performSavedItemAction(
                 request = CommentsSavedItemRequest.StoryFavorite(action.itemId),
                 kind = SavedItemActionKind.FAVORITE,

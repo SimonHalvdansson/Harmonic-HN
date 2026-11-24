@@ -626,7 +626,9 @@ class CommentsFeatureRuntime(
             platform(CommentsPlatformEffect.ReloadLinkPreviews)
             return
         }
-        execute(CommentsUiOrchestrator.header(action, CommentsHeaderContext(story, hasAccount)))
+        execute(CommentsUiOrchestrator.header(action, CommentsHeaderContext(
+            story, hasAccount, savedItems.isUpvoted(story.id, story.isComment), story.id in state.downvotedCommentIds,
+        )))
     }
 
     /** Validates the portable summary policy before asking the host to extract article text. */

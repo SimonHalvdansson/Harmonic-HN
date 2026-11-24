@@ -4,6 +4,14 @@ package com.simon.harmonichackernews.ui.comments
 
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import com.simon.harmonichackernews.presentation.CommentsHeaderAction
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.layout.PaddingValues
@@ -71,6 +79,8 @@ fun CommentsHeaderMetadata(
     onAuthorClick: () -> Unit = {},
     onVoteClick: () -> Unit = {},
     onReplyClick: () -> Unit = {},
+    onVoteChoice: (CommentsHeaderAction) -> Unit = {},
+    downvoted: Boolean = false,
     upvoted: Boolean = false,
     voteLoading: Boolean = false,
     commented: Boolean = false,
@@ -110,17 +120,26 @@ fun CommentsHeaderMetadata(
                     shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 8.dp, bottomEnd = 8.dp),
                     onClick = onAuthorClick,
                 )
-                HeaderDetailButton(
-                    icon = if (upvoted) Res.drawable.ic_thumb_up_filled else Res.drawable.ic_thumb_up,
-                    label = if (story.isComment) "" else story.score.toString(),
-                    showLabel = settings.showHeaderPoints,
-                    animateLabelVisibility = animateSettingsPreview,
-                    description = if (upvoted) "Remove vote" else "Upvote",
-                    typography = typography, textStyle = textStyle,
-                    headerColor = headerColor,
-                    modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp),
-                    loading = voteLoading, selected = upvoted, onClick = onVoteClick,
-                )
+                var voteMenu by remember(story.id) { mutableStateOf(false) }
+                Box(Modifier.weight(1f)) {
+                    HeaderDetailButton(
+                        icon = when {
+                            downvoted -> Res.drawable.ic_thumb_down_filled
+                            upvoted -> Res.drawable.ic_thumb_up_filled
+                            else -> Res.drawable.ic_thumb_up
+                        },
+                        label = if (story.isComment) "" else story.score.toString(),
+                        showLabel = settings.showHeaderPoints,
+                        animateLabelVisibility = animateSettingsPreview,
+                        description = if (upvoted || downvoted) "Remove vote" else "Upvote",
+                        typography = typography, textStyle = textStyle,
+                        headerColor = headerColor,
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp),
+                        loading = voteLoading, selected = upvoted || downvoted, onClick = onVoteClick,
+                        onLongClick = { voteMenu = true },
+                    )
+                    HeaderVoteMenu(voteMenu, { voteMenu = false }, story.isComment, upvoted, downvoted, onVoteChoice)
+                }
                 HeaderDetailButton(
                     icon = commentIcon, label = story.descendants.toString(),
                     description = (if (story.isComment) "Reply to comment" else "Reply to post") +
@@ -199,6 +218,7 @@ private fun HeaderDetailButton(
     /** Tints the icon with the accent color, e.g. for stories the user has commented on. */
     highlighted: Boolean = false,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     annotatedLabel: AnnotatedString? = null,
     showLabel: Boolean = true,
     animateLabelVisibility: Boolean = false,
@@ -213,18 +233,11 @@ private fun HeaderDetailButton(
         tween(180), label = "header detail button content",
     )
     Box(modifier) {
-        HarmonicTooltip(description) {
-            FilledTonalButton(
-                onClick = onClick, enabled = enabled && !loading,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .semantics { contentDescription = description; this.selected = selected },
-                shape = shape, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = background, contentColor = foreground,
-                    disabledContainerColor = background.copy(alpha = 0.5f),
-                    disabledContentColor = foreground.copy(alpha = 0.38f),
-                ),
-            ) {
+        HarmonicTooltip(description, enabled = onLongClick == null) {
+            val buttonModifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .semantics { contentDescription = description; this.selected = selected }
+            val padding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+            val content: @Composable RowScope.() -> Unit = {
                 AnimatedContent(targetState = icon to loading,
                     transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
                     label = "header detail button icon") { (visibleIcon, busy) ->
@@ -243,6 +256,26 @@ private fun HeaderDetailButton(
                         fontWeight = FontWeight.Medium, style = textStyle,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+            }
+            if (onLongClick != null) {
+                Surface(shape = shape, color = background, contentColor = foreground) {
+                    Row(
+                        buttonModifier.combinedClickable(enabled = enabled && !loading, role = Role.Button,
+                            onClick = onClick, onLongClickLabel = "Voting options", onLongClick = onLongClick).padding(padding),
+                        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+                        content = content,
+                    )
+                }
+            } else {
+                FilledTonalButton(
+                    onClick = onClick, enabled = enabled && !loading, modifier = buttonModifier,
+                    shape = shape, contentPadding = padding,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = background, contentColor = foreground,
+                        disabledContainerColor = background.copy(alpha = 0.5f),
+                        disabledContentColor = foreground.copy(alpha = 0.38f),
+                    ), content = content,
+                )
             }
         }
     }
