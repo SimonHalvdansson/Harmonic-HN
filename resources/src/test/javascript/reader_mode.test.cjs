@@ -584,6 +584,12 @@ test('read aloud only appears in reader mode and restores playback controls on r
         await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), playing);
         await page.getByRole('button', {name:'Pause',exact:true}).click();
         assert.equal(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)).action, playing), 'pause');
+        await page.getByRole('button', {name:'Reading speed'}).click();
+        assert.equal(await page.getByRole('button', {name:'1.5×',exact:true}).getAttribute('aria-pressed'), 'true');
+        await page.getByRole('button', {name:'1.25×',exact:true}).click();
+        assert.deepEqual(await page.evaluate(state => JSON.parse(HarmonicReaderMode.readAloudTick(state)), playing),
+            {action:'rate',rate:1.25});
+        assert.equal(await page.getByRole('button', {name:'Reading speed'}).getAttribute('aria-expanded'), 'false');
         await disable(page);
         assert.equal(await page.locator('harmonic-listen').count(), 0);
         await page.evaluate(state => HarmonicReaderMode.readAloudTick(state), playing);
@@ -618,7 +624,7 @@ test('read aloud matches the reader theme and fits one control row on phones', a
         await page.waitForTimeout(300); // Measure settled spacing after the Listen entrance.
         const metrics = await page.evaluate(() => {
             const host=document.querySelector('harmonic-listen');
-            const controls=[...host.shadowRoot.querySelectorAll('button,select')].filter(el=>!el.closest('[inert]'));
+            const controls=[...host.shadowRoot.querySelectorAll('button,select')].filter(el=>!el.closest('[inert],[hidden]'));
             return {tops:controls.map(el=>Math.round(el.getBoundingClientRect().top)),
                 color:getComputedStyle(host.shadowRoot.querySelector('.controls')).backgroundColor,
                 overflow:document.documentElement.scrollWidth>window.innerWidth,

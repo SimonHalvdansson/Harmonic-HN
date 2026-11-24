@@ -47,6 +47,27 @@ class ReadAloudControllerTest {
         controller.command(action("stop")); controller.play()
         assertEquals(1, engine.spoken.size)
     }
+    @Test fun seekResumesAtAWordAndRejectsCallbacksFromTheOldPosition() {
+        val engine = Speech()
+        val controller = ReadAloudController(engine)
+        controller.command(start("First. " + "second ".repeat(60) + "end."))
+        val duration = controller.state.value.durationSeconds
+        controller.command(buildJsonObject { put("action", "seek"); put("seconds", 15) })
+        assertEquals(1, controller.state.value.index)
+        assertEquals(15, controller.state.value.positionSeconds)
+        assertTrue(engine.spoken.last().startsWith("second "))
+        assertTrue(engine.spoken.last().length < 300)
+        engine.completions.first()(null)
+        assertTrue(controller.state.value.playing)
+        controller.pause()
+        controller.command(buildJsonObject { put("action", "rate"); put("rate", 2) })
+        assertTrue(controller.state.value.durationSeconds in duration / 2..duration / 2 + 1)
+        controller.command(buildJsonObject { put("action", "seek"); put("seconds", 0) })
+        assertFalse(controller.state.value.playing)
+        assertEquals(0, controller.state.value.index)
+        controller.play()
+        assertEquals("First.", engine.spoken.last())
+    }
     @Test fun splitLimitsChunksWithoutBreakingSurrogates() {
         val text = "x".repeat(1799) + "😀" + "y".repeat(4000)
         val parts = ReadAloudController.split(text)

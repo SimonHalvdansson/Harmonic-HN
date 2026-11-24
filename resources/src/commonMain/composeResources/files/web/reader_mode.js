@@ -1059,13 +1059,16 @@
                     '.controls{display:flex;gap:4px;align-items:center;flex-wrap:wrap;width:100%;padding:8px;border-radius:24px;background:var(--surface)}' +
                     '.active .playback{grid-template-rows:1fr;opacity:1;visibility:visible;transform:none;pointer-events:auto}' +
                     '.active .start{opacity:0;visibility:hidden;transform:translateY(-3px);pointer-events:none}' +
-                    'button,select{font:inherit;color:inherit;border:0;background:transparent;border-radius:50%;height:44px;min-width:44px;padding:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent}' +
+                    'button{font:inherit;color:inherit;border:0;background:transparent;border-radius:50%;height:44px;min-width:44px;padding:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-tap-highlight-color:transparent}' +
                     'svg{width:24px;height:24px;fill:currentColor;pointer-events:none}' +
-                    'button:hover,select:hover{background:var(--page)}button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}' +
+                    'button:hover{background:var(--page)}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}' +
                     'button:disabled{opacity:.35;cursor:default}.toggle{width:48px;height:48px;border-radius:18px;background:var(--accent);color:var(--page)}.toggle:hover{background:var(--accent);filter:brightness(.94)}' +
                     '.start{gap:8px;padding:0 16px 0 12px;border-radius:22px;background:var(--surface);color:var(--accent)}' +
                     '.toggle{display:grid}.toggle svg{grid-area:1/1}.toggle[data-action="pause"] .play-icon,.toggle[data-action="play"] .pause-icon{opacity:0;transform:scale(.85)}' +
-                    'select{margin-left:auto;appearance:none;text-align:center;border-radius:16px;min-width:58px;background:var(--page);padding:8px}' +
+                    '.speed{margin-left:auto;gap:5px;border-radius:16px;background:var(--page);font-variant-numeric:tabular-nums}.speed:after{content:"";width:6px;height:6px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg)}' +
+                    '.speed[aria-expanded=true]:after{transform:translateY(2px) rotate(225deg)}' +
+                    '.speeds{flex:1 1 100%;min-width:0;margin:4px;padding:12px;border-radius:18px;background:var(--page)}.speeds strong{display:block;margin:0 4px 6px}.rates{display:flex;gap:4px;flex-wrap:wrap}' +
+                    '.rates button{padding:0 6px;flex:1 0 40px;border-radius:12px;color:var(--muted)}.rates button[aria-pressed=true]{background:var(--accent);color:var(--page)}' +
                     '.status,.notice{flex:1 1 100%;padding:3px 12px 2px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}' +
                     '@media(prefers-reduced-motion:no-preference){' +
                     ':host{animation:listen-appear .18s ease-out both}' +
@@ -1083,15 +1086,39 @@
                     '<button data-action="previous" aria-label="Previous sentence" title="Previous sentence">' + speechIcons.previous + '</button>' +
                     '<button class="toggle" data-action="pause" aria-label="Pause">' + speechIcons.pause.replace('<svg ', '<svg class="pause-icon" ') + speechIcons.play.replace('<svg ', '<svg class="play-icon" ') + '</button>' +
                     '<button data-action="next" aria-label="Next sentence" title="Next sentence">' + speechIcons.next + '</button>' +
-                    '<select aria-label="Reading speed" title="Reading speed"><option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>' +
+                    '<button class="speed" data-action="speeds" aria-label="Reading speed" aria-expanded="false" aria-controls="reading-speeds">1×</button>' +
                     '<button data-action="stop" aria-label="Stop" title="Stop reading">' + speechIcons.stop + '</button>' +
+                    '<div class="speeds" id="reading-speeds" role="group" aria-label="Reading speed" hidden><strong>Reading speed</strong><div class="rates">' +
+                    [0.75,1,1.25,1.5,2].map(function(rate) {
+                        return '<button data-action="rate" data-rate="' + rate + '">' + rate + '×</button>';
+                    }).join('') + '</div></div>' +
                     '<div class="status" role="status" hidden></div></div></div></div>' +
                     '<div class="notice" role="status" hidden></div></div>';
+                var speedButton = shadow.querySelector(".speed");
+                var speedOptions = shadow.querySelector(".speeds");
+                function showSpeeds(open) {
+                    speedOptions.hidden = !open;
+                    speedButton.setAttribute("aria-expanded", String(open));
+                    if (open) speedOptions.querySelector('[aria-pressed="true"]').focus({preventScroll:true});
+                    else speedButton.focus({preventScroll:true});
+                }
+                shadow.addEventListener("keydown", function(event) {
+                    if (event.key === "Escape" && !speedOptions.hidden) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        showSpeeds(false);
+                    }
+                });
                 shadow.addEventListener("click", function(event) {
                     var button = event.target.closest("button");
                     var action = button && button.getAttribute("data-action");
                     if (!event.isTrusted || !action || speechCommand) return;
-                    if (action === "start") {
+                    if (action === "speeds") {
+                        showSpeeds(speedOptions.hidden);
+                    } else if (action === "rate") {
+                        speechCommand = {action:"rate",rate:Number(button.getAttribute("data-rate"))};
+                        showSpeeds(false);
+                    } else if (action === "start") {
                         var root = document.getElementById("harmonic-reader-article");
                         var article = root ? {root:root,title:document.title} : preparedArticle(true);
                         if (!article) return;
@@ -1105,9 +1132,6 @@
                         }
                         speechCommand = {action:action,text:text,title:article.title || document.title,url:location.href};
                     } else speechCommand = {action:action};
-                });
-                shadow.querySelector("select").addEventListener("change", function(event) {
-                    if (event.isTrusted) speechCommand = {action:"rate",rate:Number(event.target.value)};
                 });
                 var byline = document.getElementById("harmonic-reader-byline");
                 if (byline) byline.setAttribute("data-harmonic-listen-header", "true");
@@ -1145,7 +1169,16 @@
             if (!active && previousFocus && playback.contains(previousFocus)) start.focus({preventScroll:true});
             ui.querySelector('[data-action="previous"]').disabled = state.index === 0;
             ui.querySelector('[data-action="next"]').disabled = state.index >= state.count - 1;
-            ui.querySelector("select").value = String(state.rate || 1);
+            var rate = String(state.rate || 1);
+            var speed = ui.querySelector(".speed");
+            if (speed.textContent !== rate + "×") speed.textContent = rate + "×";
+            ui.querySelectorAll("[data-rate]").forEach(function(option) {
+                option.setAttribute("aria-pressed", String(option.getAttribute("data-rate") === rate));
+            });
+            if (!active) {
+                ui.querySelector(".speeds").hidden = true;
+                speed.setAttribute("aria-expanded", "false");
+            }
             ui.querySelector(".notice").hidden = active || !state.error;
             var status = ui.querySelector(active ? ".status" : ".notice");
             status.hidden = !active && !state.error;

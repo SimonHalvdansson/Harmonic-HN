@@ -10,11 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.windowInsetsPadding
 import com.simon.harmonichackernews.presentation.ReadAloudController
 import com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.platform.IosAppearanceController
 import com.simon.harmonichackernews.platform.accountOrNull
@@ -360,10 +359,10 @@ private fun IosApp(
                     val playerVisible = speechEnabled && fontSettings.reading.readAloudMiniPlayer && speech != null && speech.count > 0
                     Column(
                         Modifier.fillMaxSize().then(
-                            if (playerVisible) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
+                            if (playerVisible) Modifier.background(MaterialTheme.colorScheme.cardBackground).windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
                         ),
                     ) {
-                        Box(Modifier.weight(1f)) {
+                        Box(Modifier.weight(1f).background(MaterialTheme.colorScheme.pageBackground)) {
                             IosAppContent(
                                 app = bootstrap.app,
                                 scene = scene,
@@ -381,7 +380,7 @@ private fun IosApp(
                         }
                         if (playerVisible && speech != null && readAloud != null) {
                             ReadAloudMiniPlayer(speech) { action ->
-                                readAloud.command(buildJsonObject { put("action", action) })
+                                readAloud.command(action)
                             }
                         }
                     }

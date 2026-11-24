@@ -188,7 +188,7 @@ final class IosReadAloudTests: XCTestCase {
         host.setCommandHandler { commands.append($0) }
         func state(playing: Bool, count: Int32 = 3) -> ReadAloudState {
             ReadAloudState(title: "Test article", url: "https://example.com/article", playing: playing,
-                           index: 1, count: count, rate: 1.25, error: nil)
+                           index: 1, count: count, rate: 1.25, error: nil, positionSeconds: 5, durationSeconds: 30)
         }
         host.update(state: state(playing: true))
         let media = MPRemoteCommandCenter.shared()

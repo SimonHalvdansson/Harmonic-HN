@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.navigationBars
 import com.simon.harmonichackernews.AndroidReadAloud
 import com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -52,6 +50,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModelProvider
+import com.simon.harmonichackernews.ui.theme.cardBackground
 import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.AndroidCommentsCoordinator
 import com.simon.harmonichackernews.MainActivity
@@ -169,13 +168,13 @@ private fun AndroidReadAloudHost(activity: MainActivity, content: @Composable ()
     )
     val playerInsets = PaddingValues(bottom = playerBottomInset)
     Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.pageBackground)
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.cardBackground)
             .padding(playerInsets).consumeWindowInsets(playerInsets),
     ) {
         // AndroidView may draw beyond its resized bounds while Chromium catches up.
-        Box(Modifier.weight(1f).clipToBounds()) { content() }
+        Box(Modifier.weight(1f).background(MaterialTheme.colorScheme.pageBackground).clipToBounds()) { content() }
         ReadAloudMiniPlayer(speech, enabled = playerEnabled) { action ->
-            AndroidReadAloud.command(activity.applicationContext, buildJsonObject { put("action", action) })
+            AndroidReadAloud.command(activity.applicationContext, action)
         }
     }
 }

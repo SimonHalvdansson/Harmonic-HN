@@ -17,6 +17,7 @@ import com.simon.harmonichackernews.ui.theme.HarmonicTheme
 import com.simon.harmonichackernews.ui.theme.HarmonicThemeCatalog
 import com.simon.harmonichackernews.ui.theme.cardBackground
 import javax.swing.SwingUtilities
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -39,7 +40,7 @@ class ReadAloudMiniPlayerTest {
                                 state = state.value,
                                 enabled = enabled.value,
                                 modifier = Modifier.onSizeChanged { height = it.height },
-                                onAction = { actions += it },
+                                onAction = { actions += it.getValue("action").jsonPrimitive.content },
                             )
                         }
                     }
@@ -81,6 +82,9 @@ class ReadAloudMiniPlayerTest {
                 assertEquals(fullHeight, height)
                 click(368f)
                 assertEquals("stop", actions.last())
+                // Sample the resting surface, outside the pointer hover indication.
+                scene.sendPointerEvent(PointerEventType.Move, Offset(200f, 185f))
+                settle()
                 state.value = ReadAloudState()
                 repeat(6) { frame() }
                 assertTrue(height in 1 until fullHeight, "Clearing playback must retain the player during exit")

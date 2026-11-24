@@ -13,8 +13,6 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
@@ -281,7 +279,7 @@ fun main() {
                                             if (!speechEnabled) DesktopReadAloud.controller.stop()
                                         }
                                         com.simon.harmonichackernews.ui.reader.ReadAloudMiniPlayer(speech, enabled = speechEnabled) { action ->
-                                            DesktopReadAloud.controller.command(buildJsonObject { put("action", action) })
+                                            DesktopReadAloud.controller.command(action)
                                         }
                                     }
                                 }
