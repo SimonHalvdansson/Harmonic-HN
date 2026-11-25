@@ -53,26 +53,44 @@ class DiscussionSummaryRuntimeTest {
                 return SummaryResult("Discussion result")
             }
         }
-        val runtime = DiscussionSummaryRuntime(this, settings, summaries, engine, { false }, dispatcher)
-        runtime.open("Title", null, source, false)
-        runtime.open("Title", null, source, false)
+        val cache = RecentSummaryCache(settings)
+        fun openRuntime() = DiscussionSummaryRuntime(this, settings, summaries, engine, { false }, dispatcher, cache = cache)
+        val runtime = openRuntime()
+        runtime.open(1, "Title", null, source, false)
+        runtime.open(1, "Title", null, source, false)
         advanceUntilIdle()
         assertEquals("Discussion result", runtime.state.value.text)
         assertEquals(2, requests.size)
         assertTrue(requests[1].text.length < requests[0].text.length)
         assertTrue(requests.all { it.prompt == "Explain the main disagreement." })
         assertTrue(requests.all { it.preserveInput && !it.useGeminiNanoSummarizationLora })
-        runtime.open("Title", null, source, false)
+        val completed = runtime.state.value
+        runtime.reset()
+        val reopened = openRuntime()
+        reopened.open(1, "Title", null, source, true, recentOnly = true)
         advanceUntilIdle()
-        assertEquals("Discussion result", runtime.state.value.text)
+        assertEquals(completed.copy(coverage = completed.coverage?.copy(cached = true)), reopened.state.value)
         assertEquals(2, requests.size)
+
+        val updated = openRuntime()
+        updated.open(1, "Title", null, source.dropLast(1), false, recentOnly = true)
+        advanceUntilIdle()
+        assertEquals(DiscussionSummaryState(), updated.state.value)
+        assertEquals(2, requests.size)
+        updated.open(1, "Title", null, source.dropLast(1), false)
+        advanceUntilIdle()
+        assertEquals(3, requests.size)
+        settings.setText(AiSummaryTextSetting.DISCUSSION_SYSTEM_PROMPT, "Summarize the replies.")
+        openRuntime().open(1, "Title", null, source.dropLast(1), false)
+        advanceUntilIdle()
+        assertEquals(4, requests.size)
     }
 
     @Test fun refreshPreservesEquivalentInputAndInvalidatesEditedComments() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
         val runtime = DiscussionSummaryRuntime(this, settings, summaries, null, { true }, dispatcher)
-        runtime.open("Post", null, source, true)
+        runtime.open(1, "Post", null, source, true)
         advanceUntilIdle()
         val original = runtime.state.value
         assertTrue(original.text.isNotBlank())
@@ -85,7 +103,7 @@ class DiscussionSummaryRuntimeTest {
         val updated = source.dropLast(1) + last.copy(comment = last.comment.copy(text = "An edited reply"))
         runtime.invalidateIfSourceChanged("Post", null, updated)
         assertEquals(DiscussionSummaryState(), runtime.state.value)
-        runtime.open("Post", null, updated, false)
+        runtime.open(1, "Post", null, updated, false)
         advanceUntilIdle()
         assertTrue(runtime.state.value.sourceText.orEmpty().contains("An edited reply"))
     }
@@ -108,7 +126,7 @@ class DiscussionSummaryRuntimeTest {
             }
         })
         val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher)
-        runtime.open("Title", null, source, false)
+        runtime.open(1, "Title", null, source, false)
         advanceUntilIdle()
         assertEquals("Fits", runtime.state.value.text)
         assertTrue(lengths.first() in 2_001..14_999)
@@ -134,7 +152,7 @@ class DiscussionSummaryRuntimeTest {
             }
         }
         val runtime = DiscussionSummaryRuntime(this, settings, summaries, engine, { false }, dispatcher)
-        runtime.open("Title", null, source, true)
+        runtime.open(1, "Title", null, source, true)
         advanceUntilIdle()
         assertTrue(runtime.state.value.running)
         runtime.invalidateIfSourceChanged("Title", null, source.dropLast(1))
@@ -167,7 +185,7 @@ class DiscussionSummaryRuntimeTest {
         }
         val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher,
             cloudFirstOutputTimeoutMillis = 100)
-        runtime.open("Post", null, comments, false)
+        runtime.open(1, "Post", null, comments, false)
         advanceUntilIdle()
         assertEquals(2, lengths.size)
         assertTrue(lengths[1] < lengths[0])
@@ -197,7 +215,7 @@ class DiscussionSummaryRuntimeTest {
         }
         val runtime = DiscussionSummaryRuntime(this, settings, cloud, null, { false }, dispatcher,
             cloudFirstOutputTimeoutMillis = 100)
-        runtime.open("Post", null, comments, false)
+        runtime.open(1, "Post", null, comments, false)
         advanceUntilIdle()
         assertEquals(1, requests)
         assertFalse(runtime.state.value.running)
@@ -229,7 +247,7 @@ class DiscussionSummaryRuntimeTest {
             PortableCommentItem(CommentSnapshot(id, parentId = 1, text = "Comment ".repeat(85)),
                 CommentPresentationSnapshot(sortOrder = id))
         }
-        runtime.open("Title", null, largeThread, false)
+        runtime.open(1, "Title", null, largeThread, false)
         advanceUntilIdle()
         val config = requests.single()
         assertEquals("configured-model", config.model)

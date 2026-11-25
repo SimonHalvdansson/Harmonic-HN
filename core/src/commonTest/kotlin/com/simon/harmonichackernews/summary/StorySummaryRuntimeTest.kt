@@ -15,9 +15,69 @@ import kotlin.test.assertTrue
 import com.simon.harmonichackernews.platform.LocalSummaryEngine
 import com.simon.harmonichackernews.platform.SummaryRequest
 import com.simon.harmonichackernews.platform.SummaryResult
+import com.simon.harmonichackernews.settings.AiSummarySettingsRepository
+import com.simon.harmonichackernews.settings.AiSummaryTextSetting
+import com.simon.harmonichackernews.settings.TestCredentialStore
+import com.simon.harmonichackernews.settings.TestKeyValueStore
+import kotlinx.coroutines.flow.emptyFlow
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.TestTimeSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StorySummaryRuntimeTest {
+    @Test
+    fun completedArticleSurvivesReopeningUntilItsOriginalExpiry() = runTest {
+        val clock = TestTimeSource()
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow())
+        val cache = RecentSummaryCache(settings, timeSource = clock)
+        var calls = 0
+        val backend = StorySummaryBackend {
+            flow {
+                calls++
+                emit(StorySummaryEvent.SourceInput("Article text"))
+                emit(StorySummaryEvent.Success("Summary $calls"))
+            }
+        }
+        fun open() = StorySummaryRuntime(this, backend, backend, cache = cache)
+        val input = StorySummaryInput("https://example.com/story")
+        val first = open()
+        first.start(StorySummaryMode.CLOUD, input)
+        advanceUntilIdle()
+        val original = first.state.value
+        first.dispose()
+
+        clock += 14.minutes
+        val reopened = open()
+        assertTrue(reopened.restoreRecent(input.articleUrl))
+        assertEquals(original, reopened.state.value)
+        clock += 1.minutes
+        assertFalse(open().restoreRecent(input.articleUrl))
+        reopened.start(StorySummaryMode.CLOUD, input)
+        advanceUntilIdle()
+        assertEquals("Summary 2", reopened.state.value.text)
+        settings.setText(AiSummaryTextSetting.SYSTEM_PROMPT, "Use one sentence.")
+        assertFalse(open().restoreRecent(input.articleUrl))
+    }
+
+    @Test
+    fun articleCacheLeavesFailuresAndTruncationsRetryable() = runTest {
+        val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow())
+        val cache = RecentSummaryCache(settings)
+        val events = listOf(StorySummaryEvent.Failure("network"), StorySummaryEvent.Success("Partial", true),
+            StorySummaryEvent.Success("Complete")).iterator()
+        val backend = StorySummaryBackend { flow { emit(events.next()) } }
+        val input = StorySummaryInput("https://example.com/story")
+        repeat(3) {
+            val runtime = StorySummaryRuntime(this, backend, backend, cache = cache)
+            assertFalse(runtime.restoreRecent(input.articleUrl))
+            runtime.start(StorySummaryMode.CLOUD, input)
+            advanceUntilIdle()
+        }
+        val reopened = StorySummaryRuntime(this, backend, backend, cache = cache)
+        assertTrue(reopened.restoreRecent(input.articleUrl))
+        assertEquals("Complete", reopened.state.value.text)
+    }
+
     @Test
     fun truncatedResultsSurviveTheEngineAdapterAndResetOnTheNextRequest() = runTest {
         var truncate = true

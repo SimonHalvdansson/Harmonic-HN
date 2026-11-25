@@ -169,17 +169,34 @@ class StorySummaryRuntime(
     private val cloudBackend: StorySummaryBackend,
     private val localBackend: StorySummaryBackend,
     private val mockAnswers: () -> Boolean = { false },
+    private val cache: RecentSummaryCache? = null,
 ) {
     private val mutableState = MutableStateFlow(StorySummaryState())
     private var activeJob: Job? = null
 
     val state: StateFlow<StorySummaryState> = mutableState.asStateFlow()
 
+    private fun cacheKey(url: String) = cache?.let {
+        RecentSummaryCache.Key(url, it.configuration(discussion = false, mock = mockAnswers()))
+    }
+
+    fun restoreRecent(articleUrl: String): Boolean =
+        cache != null && !cache.articles.isEmpty() && restoreRecent(cacheKey(articleUrl))
+
+    private fun restoreRecent(key: RecentSummaryCache.Key?): Boolean {
+        val recent = key?.let { cache?.articles?.get(it) } ?: return false
+        activeJob?.cancel()
+        mutableState.value = recent.copy(generation = state.value.generation + 1)
+        return true
+    }
+
     fun start(
         mode: StorySummaryMode,
         input: StorySummaryInput,
         currentText: String? = state.value.text,
     ) {
+        val key = cacheKey(input.articleUrl)
+        if (restoreRecent(key)) return
         activeJob?.cancel()
         val generation = state.value.generation + 1
         val startedAt = TimeSource.Monotonic.markNow()
@@ -245,6 +262,9 @@ class StorySummaryRuntime(
                                 status = StorySummaryStatus.Success,
                                 truncated = event.truncated,
                             )
+                            if (key != null && !event.truncated && event.text.isNotBlank()) {
+                                cache?.articles?.set(key, mutableState.value)
+                            }
                         }
                         is StorySummaryEvent.Failure -> {
                             reachedTerminalState = true

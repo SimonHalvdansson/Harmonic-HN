@@ -3,6 +3,10 @@ package com.simon.harmonichackernews.summary
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.utils.HtmlTextUtils
 import kotlinx.serialization.json.JsonPrimitive
+import okio.HashingSink
+import okio.blackholeSink
+import okio.buffer
+import okio.use
 
 data class DiscussionCoverage(val eligible: Int, val included: Int, val shortened: Int, val cached: Boolean)
 
@@ -15,6 +19,22 @@ internal fun PortableCommentItem.mayHaveDiscussionText(): Boolean =
 
 internal data class DiscussionComment(val id: Int, val parent: Int, val text: String) {
     fun encode() = """{"id":$id,"parent_id":$parent,"text":${JsonPrimitive(text)}}"""
+}
+
+/** Hash the readable thread in prompt order without retaining entire threads across visits. */
+internal fun discussionSourceDigest(
+    title: String?, body: String?, entries: List<DiscussionComment>, checkActive: () -> Unit,
+): String {
+    val digest = HashingSink.sha256(blackholeSink())
+    digest.buffer().use { sink ->
+        sink.writeUtf8(JsonPrimitive(title).toString()).writeByte(10)
+        sink.writeUtf8(JsonPrimitive(body).toString()).writeByte(10)
+        for (entry in entries) {
+            checkActive()
+            sink.writeUtf8(entry.encode()).writeByte(10)
+        }
+    }
+    return digest.hash.hex()
 }
 
 internal fun readableDiscussionComments(

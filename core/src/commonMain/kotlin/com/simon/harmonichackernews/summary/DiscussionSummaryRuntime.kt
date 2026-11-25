@@ -40,6 +40,7 @@ class DiscussionSummaryRuntime(
     private val mock: () -> Boolean,
     private val preparationDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val cloudFirstOutputTimeoutMillis: Long = 45_000L,
+    private val cache: RecentSummaryCache = RecentSummaryCache(settings),
 ) {
     private val mutableState = MutableStateFlow(DiscussionSummaryState())
     val state = mutableState.asStateFlow()
@@ -59,26 +60,43 @@ class DiscussionSummaryRuntime(
         }
     }
 
-    fun open(title: String?, body: String?, comments: List<PortableCommentItem>, cached: Boolean) {
+    fun open(
+        storyId: Int, title: String?, body: String?, comments: List<PortableCommentItem>,
+        cached: Boolean, recentOnly: Boolean = false,
+    ) {
         val old = state.value
         if (old.running || old.text.isNotBlank()) return
-        if (!available()) return
-        requestedSource = Source(title, body, comments)
-        val request = ++generation
+        if (recentOnly && cache.discussions.isEmpty()) return
         val mockRequest = mock()
         val config = settings.snapshot()
-        mutableState.value = DiscussionSummaryState(running = true)
+        val key = RecentSummaryCache.Key(storyId.toString(), cache.configuration(discussion = true, mock = mockRequest, config = config))
+        val recent = cache.discussions[key]
+        if ((recentOnly && recent == null) || !available()) return
+        job?.cancel()
+        requestedSource = Source(title, body, comments)
+        val request = ++generation
+        if (!recentOnly) mutableState.value = DiscussionSummaryState(running = true)
         fun update(transform: (DiscussionSummaryState) -> DiscussionSummaryState) {
             if (generation == request) mutableState.value = transform(state.value)
         }
         job = scope.launch {
             try {
+                val (entries, digest) = withContext(preparationDispatcher) {
+                    val readable = readableDiscussionComments(comments) { ensureActive() }
+                    readable to discussionSourceDigest(title, body, readable) { ensureActive() }
+                }
+                val match = recent?.matching(digest, cached)
+                if (match != null) {
+                    update { match }
+                    return@launch
+                }
+                if (recentOnly) {
+                    if (request == generation) requestedSource = null
+                    return@launch
+                }
                 val cloud = if (!mockRequest && config.mode == AiSummaryMode.CLOUD) settings.cloudConfig() else null
                 val budgets = if (cloud != null) listOf(120_000, 60_000, 30_000, 15_000, 8_000, 4_000, 2_000)
                     else listOf(16_000, 8_000, 4_000, 2_000)
-                val entries = withContext(preparationDispatcher) {
-                    readableDiscussionComments(comments) { ensureActive() }
-                }
                 var previousText: String? = null
                 var contextError: Exception? = null
                 var noOutputRetries = 0
@@ -139,6 +157,9 @@ class DiscussionSummaryRuntime(
                         ?: throw DiscussionFailure("The model returned no summary. Please retry.")
                     update { it.copy(running = false, text = complete.text, truncated = complete.truncated,
                         sourceText = input.text) }
+                    if (generation == request && !complete.truncated) {
+                        cache.discussions[key] = RecentSummaryCache.Discussion(digest, state.value)
+                    }
                     return@launch
                 }
             } catch (cancelled: CancellationException) {

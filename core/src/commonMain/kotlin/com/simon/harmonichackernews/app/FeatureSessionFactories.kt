@@ -201,6 +201,7 @@ fun HarmonicAppComposition.createCommentsFeatureStore(
         discussionRuntime = DiscussionSummaryRuntime(
             featureScope, aiSummarySettings, network.summaryUseCase, localSummaryEngine,
             mock = { host.userSettings.debug.mockAiAnswers },
+            cache = recentSummaries,
         ),
         canLoadArticleTextOnDemand = host.canLoadArticleTextOnDemand,
         loadCachedStoryHeader = { storyCache.loadStoryHeader(it) },

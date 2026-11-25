@@ -54,6 +54,7 @@ import com.simon.harmonichackernews.settings.DataSettingsRuntime
 import com.simon.harmonichackernews.summary.CloudStorySummaryBackend
 import com.simon.harmonichackernews.summary.ExtractingStorySummaryBackend
 import com.simon.harmonichackernews.summary.PlatformLocalStorySummaryBackend
+import com.simon.harmonichackernews.summary.RecentSummaryCache
 import com.simon.harmonichackernews.summary.StorySummaryRuntime
 import com.simon.harmonichackernews.summary.UnavailableStorySummaryBackend
 import com.simon.harmonichackernews.summary.LocalSummarySettingsRuntime
@@ -150,6 +151,7 @@ class HarmonicAppComposition(
         credentialDispatcher = platform.credentialDispatcher,
         cloudAiSupported = host.cloudAiSupported,
     )
+    internal val recentSummaries = RecentSummaryCache(aiSummarySettings, { localModels?.selectedModel })
     val aiModelDefaults = AiModelDefaultsUseCase(
         settings = aiSummarySettings,
         catalog = network.aiModelCatalogRepository,
@@ -309,6 +311,7 @@ class HarmonicAppComposition(
             ?: UnavailableStorySummaryBackend("The platform has no local summary engine")
         return StorySummaryRuntime(
             scope = scope,
+            cache = recentSummaries,
             mockAnswers = { userSettings.debug.mockAiAnswers },
             cloudBackend = CloudStorySummaryBackend(network.summaryUseCase) {
                 aiSummarySettings.cloudConfig()

@@ -176,7 +176,7 @@ class CommentsFeatureRuntime(
     fun openDiscussionSummary() {
         val current = story ?: return
         if (!canSummarizeDiscussion || discussionRequestBlocked) return
-        discussionRuntime?.open(current.title, current.text, thread.state.value.allComments,
+        discussionRuntime?.open(current.id, current.title, current.text, thread.state.value.allComments,
             presenter.state.value.showingCached)
     }
 
@@ -649,6 +649,7 @@ class CommentsFeatureRuntime(
         ) return
         summaryPageTextRetryAttempted = false
         summaryPageTextRetryPending = false
+        if (summaryRuntime?.restoreRecent(currentStory.url.orEmpty()) == true) return
         platform(CommentsPlatformEffect.Summarize)
     }
 
@@ -807,7 +808,13 @@ class CommentsFeatureRuntime(
                             headerChanged = effect.headerChanged,
                         ),
                     )
-                    if (!effect.incompleteOfficialThread) requestAutomaticSummaryIfEligible()
+                    if (!effect.incompleteOfficialThread) {
+                        story?.let { current ->
+                            discussionRuntime?.open(current.id, current.title, current.text,
+                                thread.state.value.allComments, presenter.state.value.showingCached, recentOnly = true)
+                        }
+                        requestAutomaticSummaryIfEligible()
+                    }
                 }
                 // Ready/state effects must reach the host without waiting for cache hashing or
                 // disk writes. Keep writes in this collector to preserve their existing order.
@@ -975,6 +982,9 @@ class CommentsFeatureRuntime(
             localAvailable = localSummaryAvailable(),
             cloudApiKeyAvailable = snapshot.apiKey.isNotBlank(),
         )
+        if (canProvideSummary && currentStory.isLink && !currentStory.summaryGeneratedSuccessfully &&
+            !summaryLoading && summaryRuntime?.restoreRecent(currentStory.url.orEmpty()) == true
+        ) return
         if (!AiSummaryAvailabilityPolicy.shouldAutomaticallySummarize(
                 automaticSummariesEnabled = snapshot.autoSummarizeArticles,
                 requestAlreadyMade = automaticSummaryRequested,
