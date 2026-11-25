@@ -3,6 +3,8 @@
 package com.simon.harmonichackernews.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
@@ -13,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.presentation.UserMessageDuration
+import kotlinx.coroutines.launch
 
 @Composable
 fun AndroidAiSummarySettingsScreen(
@@ -30,6 +33,13 @@ fun AndroidAiSummarySettingsScreen(
     val localModelState by localModels.cachedState.collectAsStateWithLifecycle()
     var localRefresh by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+    val modelPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            localModels.useExternalFile(uri.toString())?.let {
+                appComposition.userMessages.show(it, UserMessageDuration.LONG)
+            }
+        }
+    }
     val settingsRuntime = remember(appComposition, scope) {
         appComposition.createLocalSummarySettingsRuntime(scope)
     }
@@ -72,6 +82,7 @@ fun AndroidAiSummarySettingsScreen(
                 nanoBaseModelName = availabilityState.nanoBaseModelName,
                 localModels = localModels,
                 managerState = localModelState,
+                onChooseModelFile = { modelPicker.launch(arrayOf("*/*")) },
                 onChanged = { localRefresh++ },
                 onMessage = { message ->
                     appComposition.userMessages.show(message, UserMessageDuration.LONG)

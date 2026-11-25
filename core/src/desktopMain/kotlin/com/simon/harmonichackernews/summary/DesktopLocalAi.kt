@@ -157,6 +157,8 @@ class DesktopLocalAiEnvironment private constructor(
                         inferenceCacheRoot = KotlinPath(cacheRoot.toString()),
                     ),
                     transfers = transfers,
+                    externalFiles = DesktopExternalModelAccess,
+                    storageDispatcher = Dispatchers.IO,
                     runtimeDelivery = runtimeDelivery,
                     capabilities = LocalModelDeviceCapabilities(
                         supportsDownloadableModels = true,
@@ -392,7 +394,7 @@ private class DesktopLocalSummaryEngine(
     override fun isReady(): Boolean {
         val selected = models.selectedModel
         return if (selected.runtime == LocalModelRuntime.APPLE_FOUNDATION_MODELS) apple.available
-        else selected.downloadable && models.isSupported(selected) && models.isDownloaded(selected) &&
+        else models.isSupported(selected) && models.isDownloaded(selected) &&
             models.isRuntimeInstalled(selected.runtime)
     }
 
@@ -434,7 +436,8 @@ private class DesktopLocalSummaryEngine(
             }
             check(models.isSupported(selected)) { models.unsupportedReason(selected) }
             check(models.isDownloaded(selected)) {
-                "Download the selected local model before using it"
+                if (selected.externalFile != null) "The linked model file is unavailable. Choose it again."
+                else "Download the selected local model before using it"
             }
             val onProgress: (String) -> Unit = { trySend(StorySummaryEvent.Progress(it)) }
             val onLoaded: (Long) -> Unit = { loadMillis ->
@@ -443,7 +446,9 @@ private class DesktopLocalSummaryEngine(
                     modelLoadMillis = loadMillis,
                 ))
             }
-            val summary = liteRt.summarize(selected, models.installedPath(selected), instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
+            val summary = models.withModelPath(selected) { path ->
+                liteRt.summarize(selected, path, instruction, content, onProgress, onLoaded, preserveInput = request.preserveInput)
+            }
             send(StorySummaryEvent.Success(summary))
         } catch (error: CancellationException) {
             throw error

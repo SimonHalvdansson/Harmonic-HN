@@ -45,6 +45,7 @@ internal fun createAndroidLocalModelService(
         preferences = AndroidKeyValueStore.defaults(appContext),
         storageDispatcher = kotlinx.coroutines.Dispatchers.IO,
         storage = files,
+        externalFiles = AndroidExternalModelAccess(appContext),
         transfers = transfers,
         runtimeDelivery = runtimeDelivery,
         capabilities = LocalModelDeviceCapabilities(

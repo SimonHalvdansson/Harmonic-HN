@@ -18,6 +18,7 @@ import com.google.android.play.core.splitinstall.model.SplitInstallSessionStatus
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelRuntimeDelivery
 import com.simon.harmonichackernews.summary.LocalModelCatalog
+import com.simon.harmonichackernews.summary.ExternalModelFile
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallStatus
@@ -186,7 +187,7 @@ internal class LocalAiRuntimeManager(
 
     fun requestRuntimeAndModelDownload(context: Context, model: LocalModelDefinition): String? {
         requirePreloaded()
-        if (!model.downloadable) {
+        if (model.systemManaged) {
             return "${model.displayName} is built into supported devices."
         }
         val moduleName = getModuleName(model.runtime)
@@ -332,7 +333,7 @@ internal class LocalAiRuntimeManager(
                 preferences.remove("pending_model_LLAMA_CPP")
                 val pendingKey = KEY_PENDING_MODEL_PREFIX + LocalModelRuntime.LITERT_LM.name
                 val pendingModel = preferences.getString(pendingKey, "").orEmpty()
-                if (pendingModel.isNotEmpty() && LocalModelCatalog.models.none {
+                if (pendingModel.isNotEmpty() && pendingModel != ExternalModelFile.ID && LocalModelCatalog.models.none {
                         it.id == pendingModel && it.downloadable && it.runtime == LocalModelRuntime.LITERT_LM
                     }
                 ) {

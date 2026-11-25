@@ -49,12 +49,16 @@ class LocalModelService(
     private val storageLocation: LocalModelStorageLocation? = null,
     private val storageDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    private val externalFiles: ExternalModelAccess? = null,
 ) {
+    val supportsExternalFiles = externalFiles != null && capabilities.supportsDownloadableModels &&
+        capabilities.supportsLiteRtModels && runtimeDelivery.included
     private val stateStore = LocalModelStateStore(
         models = models,
         preferences = preferences,
         selectionKey = selectionKey,
         defaultModelId = models.first().id,
+        externalFilesSupported = supportsExternalFiles,
     )
     private val lifecycle = LocalModelLifecycle(
         models = models,
@@ -113,8 +117,51 @@ class LocalModelService(
     fun isDownloaded(model: LocalModelDefinition): Boolean =
         cachedState.value.statuses[model.id]?.state == LocalModelTransferState.DOWNLOADED
 
-    fun installedPath(model: LocalModelDefinition = selectedModel): String =
-        lifecycle.installedPath(model)
+    fun installedPath(model: LocalModelDefinition = selectedModel): String {
+        require(model.externalFile == null) { "Open linked model files with withModelPath" }
+        return lifecycle.installedPath(model)
+    }
+
+    suspend fun <T> withModelPath(model: LocalModelDefinition, use: suspend (String) -> T): T {
+        val file = model.externalFile ?: return use(installedPath(model))
+        return withContext(storageDispatcher) { checkNotNull(externalFiles).withPath(file, use) }
+    }
+
+    suspend fun useExternalFile(location: String): String? = operationMutex.withLock {
+        val access = externalFiles?.takeIf { supportsExternalFiles }
+            ?: return@withLock "Local model files are unavailable on this device."
+        awaitRuntimeDelivery()
+        val runtime = LocalModelRuntime.LITERT_LM
+        val status = runtimeStatus(runtime)
+        if (status.active && status.pendingModelId != ExternalModelFile.ID) {
+            return@withLock "Wait for the current local AI runtime installation to finish."
+        }
+        val previous = stateStore.externalFile
+        try {
+            val file = withContext(storageDispatcher) {
+                val file = access.inspect(location)
+                access.retain(location)
+                stateStore.selectFile(file)
+                if (previous != null && previous.location != location) access.release(previous.location)
+                file
+            }
+            refresh()
+            if (isRuntimeInstalled(runtime) || status.active) null else runtimeDelivery.request(file.definition())
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            error.message ?: "Could not open this model file. Choose a local .litertlm file."
+        }
+    }
+
+    suspend fun forgetExternalFile() = operationMutex.withLock {
+        val file = stateStore.externalFile ?: return@withLock
+        withContext(storageDispatcher) {
+            stateStore.forgetFile()
+            externalFiles?.release(file.location)
+        }
+        refresh()
+    }
 
     fun status(model: LocalModelDefinition): LocalModelTransferStatus {
         ensureTransferMonitoring()
@@ -137,6 +184,7 @@ class LocalModelService(
         runtimeDelivery.runtimeLabel(runtime)
 
     suspend fun select(modelId: String?): Boolean = operationMutex.withLock {
+        if (modelId == ExternalModelFile.ID) return@withLock false
         if (!model(modelId).supportsSummarization) return@withLock false
         lifecycle.select(modelId).also { selected -> if (selected) refresh() }
     }
@@ -147,6 +195,7 @@ class LocalModelService(
     }
 
     suspend fun requestRuntimeAndModelDownload(modelId: String?): String? {
+        if (modelId == ExternalModelFile.ID) return "Choose the local model file to use it."
         ensureTransferMonitoring()
         val model = model(modelId)
         if (!model.downloadable) return "${model.displayName} is system managed."
@@ -169,6 +218,8 @@ class LocalModelService(
     }
 
     suspend fun requestModelDownload(modelId: String?): String? = operationMutex.withLock {
+        // Play also calls this handoff after installing the runtime for a linked file.
+        if (modelId == ExternalModelFile.ID) return@withLock null
         ensureTransferMonitoring()
         val model = model(modelId)
         val message = when (val result = lifecycle.requestDownload(model.id)) {
@@ -189,6 +240,7 @@ class LocalModelService(
     }
 
     suspend fun cancel(modelId: String?) = operationMutex.withLock {
+        if (modelId == ExternalModelFile.ID) return@withLock
         awaitRuntimeDelivery()
         ensureTransferMonitoring()
         val model = model(modelId)
@@ -202,6 +254,7 @@ class LocalModelService(
     }
 
     suspend fun remove(modelId: String?) = operationMutex.withLock {
+        if (modelId == ExternalModelFile.ID) return@withLock
         ensureTransferMonitoring()
         lifecycle.remove(modelId, ::refresh)
     }
@@ -234,7 +287,7 @@ class LocalModelService(
             }
         }
         val cleared = withContext(storageDispatcher) { storage.clearStoredModels() }
-        if (cleared) lifecycle.clearSelection()
+        if (cleared && selectedModel.externalFile == null) lifecycle.clearSelection()
         transfers.reset()
         refresh()
         cleared
@@ -250,7 +303,9 @@ class LocalModelService(
         val error = withContext(storageDispatcher) { location.changeDirectory(path) }
         if (error == null) {
             transfers.reset()
-            firstReadyDownloadableModel()?.let { lifecycle.select(it.id) } ?: lifecycle.clearSelection()
+            if (selectedModel.externalFile == null) {
+                firstReadyDownloadableModel()?.let { lifecycle.select(it.id) } ?: lifecycle.clearSelection()
+            }
             refresh()
         }
         error
@@ -326,10 +381,28 @@ class LocalModelService(
     private suspend fun refreshState() = refreshMutex.withLock {
         try {
             awaitRuntimeDelivery()
-            val statuses = models.associate { it.id to lifecycle.status(it) }
+            val statuses = models.associate { it.id to lifecycle.status(it) }.toMutableMap()
+            val linked = stateStore.externalFile
+            val file = linked?.let {
+                withContext(storageDispatcher) {
+                    try {
+                        checkNotNull(externalFiles).inspect(it.location)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+            }
+            if (linked != null) {
+                statuses[ExternalModelFile.ID] = if (file != null) {
+                    LocalModelTransferStatus(LocalModelTransferState.DOWNLOADED, file.sizeBytes)
+                } else LocalModelTransferStatus(LocalModelTransferState.FAILED, error = "File unavailable. Choose it again.")
+            }
             mutableState.value = LocalModelManagerState(
                 selectedModelId = selectedModel.id,
                 statuses = statuses,
+                externalFile = file ?: linked,
                 runtimeStatuses = models
                     .map(LocalModelDefinition::runtime)
                     .distinct()

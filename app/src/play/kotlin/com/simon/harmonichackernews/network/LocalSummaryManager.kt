@@ -23,6 +23,7 @@ import com.google.mlkit.genai.prompt.TypedCandidate
 import com.google.mlkit.genai.schema.annotations.Generable
 import com.google.mlkit.genai.schema.annotations.Guide
 import com.simon.harmonichackernews.summary.LocalModelCatalog
+import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.LocalModelTransferState
 import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
@@ -359,6 +360,7 @@ internal class AndroidLocalSummaryBackend(
                 }
             } else {
                 summarizeWithDownloadedModel(
+                    selected = selected,
                     content = content,
                     preserveInput = request.preserveInput,
                     systemPrompt = request.prompt
@@ -394,18 +396,19 @@ internal class AndroidLocalSummaryBackend(
     }
 
     private suspend fun summarizeWithDownloadedModel(
+        selected: LocalModelDefinition,
         content: String,
         preserveInput: Boolean,
         systemPrompt: String,
         onProgress: (String) -> Unit,
         onLoaded: (Long) -> Unit,
     ): String = withContext(Dispatchers.IO) {
-        val selected = models.selectedModel
         check(models.isSupported(selected)) {
             models.unsupportedReason(selected)
         }
         check(models.isDownloaded(selected)) {
-            "Download the selected local model before using it"
+            if (selected.externalFile != null) "The linked model file is unavailable. Choose it again."
+            else "Download the selected local model before using it"
         }
         models.awaitRuntimeDelivery()
         check(models.isRuntimeInstalled(selected.runtime)) {
@@ -417,6 +420,7 @@ internal class AndroidLocalSummaryBackend(
             LocalModelInference.ProgressCallback(onProgress),
             LocalModelInference.LoadCallback(onLoaded),
             preserveInput = preserveInput,
+            model = selected,
         )
     }
 

@@ -22,7 +22,7 @@ enum class LocalModelUnsupportedReason {
 fun LocalModelDeviceCapabilities.unsupportedReason(
     model: LocalModelDefinition,
 ): LocalModelUnsupportedReason? = when {
-    !model.downloadable -> null
+    model.systemManaged -> null
     model.runtime == LocalModelRuntime.LITERT_LM && !supportsLiteRtModels ->
         liteRtUnsupportedReason
     !supportsDownloadableModels -> LocalModelUnsupportedReason.PLATFORM_VERSION
@@ -96,7 +96,7 @@ class LocalModelLifecycle(
         get() = model(stateStore.selectedModelId)
 
     fun model(id: String?): LocalModelDefinition =
-        models.firstOrNull { it.id == id } ?: models.first()
+        stateStore.model(id) ?: models.first()
 
     fun unsupportedReason(model: LocalModelDefinition): LocalModelUnsupportedReason? =
         capabilities.unsupportedReason(model)

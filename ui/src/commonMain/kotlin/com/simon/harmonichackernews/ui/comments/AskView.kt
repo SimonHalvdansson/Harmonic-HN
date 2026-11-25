@@ -92,7 +92,7 @@ internal fun AskSurface(
             dependencies.network.summaryUseCase, dependencies.aiSummarySettings,
             dependencies.localSummaryEngine, subject,
             mockAnswers = { dependencies.userSettings.debug.mockAiAnswers },
-            builtInModelSelected = { dependencies.localModels?.selectedModel?.downloadable == false },
+            builtInModelSelected = { dependencies.localModels?.selectedModel?.systemManaged == true },
             discussionContext = { controller.discussionSummary },
         )
     }

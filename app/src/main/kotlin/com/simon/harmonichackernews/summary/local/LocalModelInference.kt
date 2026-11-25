@@ -3,6 +3,7 @@ package com.simon.harmonichackernews.summary.local
 import android.content.Context
 import com.simon.harmonichackernews.summary.LocalSummaryPreparation
 import com.simon.harmonichackernews.summary.LocalModelRuntime
+import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelService
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,8 +31,9 @@ class LocalModelInference(
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
     preserveInput: Boolean = false,
+    model: LocalModelDefinition = models.selectedModel,
   ): String = inferenceLock.withLock {
-    summarizeLocked(text, systemInstruction, progressCallback, loadCallback, preserveInput)
+    summarizeLocked(text, systemInstruction, progressCallback, loadCallback, preserveInput, model)
   }
 
   private suspend fun summarizeLocked(
@@ -40,15 +42,14 @@ class LocalModelInference(
     progressCallback: ProgressCallback,
     loadCallback: LoadCallback,
     preserveInput: Boolean,
+    model: LocalModelDefinition,
   ): String {
-    val model = models.selectedModel
     if (!models.isRuntimeInstalled(model.runtime)) {
       throw IllegalStateException(
         "${models.runtimeLabel(model.runtime)} is not installed",
       )
     }
 
-    val modelPath = models.installedPath()
     val prepared = LocalSummaryPreparation.prepare(
       text = text,
       modelContextTokens = model.contextTokens,
@@ -56,18 +57,20 @@ class LocalModelInference(
       preserveInput = preserveInput,
     )
 
-    return getEngine(model.runtime).summarize(
-      context = appContext,
-      model = model,
-      modelPath = modelPath,
-      contextTokens = prepared.contextTokens,
-      systemInstruction = systemInstruction
-        .takeIf(String::isNotBlank)
-        ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
-      text = prepared.text,
-      progressCallback = progressCallback,
-      loadCallback = loadCallback,
-    )
+    return models.withModelPath(model) { modelPath ->
+      getEngine(model.runtime).summarize(
+        context = appContext,
+        model = model,
+        modelPath = modelPath,
+        contextTokens = prepared.contextTokens,
+        systemInstruction = systemInstruction
+          .takeIf(String::isNotBlank)
+          ?: LocalSummaryPreparation.SYSTEM_INSTRUCTION,
+        text = prepared.text,
+        progressCallback = progressCallback,
+        loadCallback = loadCallback,
+      )
+    }
   }
 
   private fun getEngine(

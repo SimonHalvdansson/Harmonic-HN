@@ -1,6 +1,7 @@
 package com.simon.harmonichackernews.summary
 
 import com.simon.harmonichackernews.settings.KeyValueStore
+import kotlinx.serialization.json.Json
 import kotlin.math.roundToLong
 
 enum class LocalModelTransferState {
@@ -35,6 +36,7 @@ data class LocalModelManagerState(
     val selectedModelId: String = LocalModelCatalog.MODEL_GEMINI_NANO,
     val statuses: Map<String, LocalModelTransferStatus> = emptyMap(),
     val runtimeStatuses: Map<LocalModelRuntime, LocalRuntimeInstallStatus> = emptyMap(),
+    val externalFile: ExternalModelFile? = null,
 )
 
 /** Owns persisted model selection and portable download-state interpretation. */
@@ -43,11 +45,34 @@ class LocalModelStateStore(
     private val preferences: KeyValueStore,
     private val selectionKey: String,
     private val defaultModelId: String,
+    private val externalFilesSupported: Boolean = false,
 ) {
+    private val fileKey = "${selectionKey}_file"
+    val externalFile: ExternalModelFile?
+        get() = if (externalFilesSupported) preferences.getString(fileKey)?.let {
+            runCatching { Json.decodeFromString<ExternalModelFile>(it) }.getOrNull()
+        } else null
+
+    fun model(id: String?): LocalModelDefinition? =
+        if (id == ExternalModelFile.ID) externalFile?.definition() else models.firstOrNull { it.id == id }
+
+    fun selectFile(file: ExternalModelFile) = preferences.update {
+        putString(fileKey, Json.encodeToString(file))
+        putString(selectionKey, ExternalModelFile.ID)
+    }
+
+    fun forgetFile() {
+        val selected = selectedModelId == ExternalModelFile.ID
+        preferences.update {
+            remove(fileKey)
+            if (selected) remove(selectionKey)
+        }
+    }
+
     val selectedModelId: String
         get() {
             val stored = preferences.getString(selectionKey, defaultModelId)
-            return models.firstOrNull { it.id == stored }?.id ?: defaultModelId
+            return model(stored)?.id ?: defaultModelId
         }
 
     fun select(modelId: String?, supported: Boolean, downloaded: Boolean): Boolean {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,9 +32,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +70,8 @@ import com.simon.harmonichackernews.resources.model_logo_qwen
 import com.simon.harmonichackernews.resources.model_logo_mistral
 import com.simon.harmonichackernews.resources.model_logo_nvidia
 import com.simon.harmonichackernews.summary.LocalModelBrand
+import com.simon.harmonichackernews.summary.ExternalModelFile
+import com.simon.harmonichackernews.summary.LocalRuntimeInstallState
 import com.simon.harmonichackernews.summary.LocalModelDefinition
 import com.simon.harmonichackernews.summary.LocalModelManagerState
 import com.simon.harmonichackernews.summary.LocalModelPresentation
@@ -92,6 +99,7 @@ fun LocalModelsRoute(
     nanoBaseModelName: String?,
     models: List<LocalModelDefinition> = localModels.catalog.filter { it.supportsSummarization },
     managedModelStatus: String? = null,
+    onChooseModelFile: (() -> Unit)? = null,
     onChanged: () -> Unit = {},
     onMessage: (String) -> Unit,
 ) {
@@ -116,6 +124,22 @@ fun LocalModelsRoute(
     }
     LocalModelsPanel(
         models = rows,
+        selectedFileName = managerState.externalFile?.name.takeIf { managerState.selectedModelId == ExternalModelFile.ID },
+        externalFileContent = if (onChooseModelFile != null && localModels.supportsExternalFiles) {
+            {
+                LaunchedEffect(localModels) {
+                    if (managerState.externalFile != null) localModels.refresh()
+                }
+                ExternalModelFileSetting(
+                    state = managerState,
+                    onChoose = onChooseModelFile,
+                    onUse = { file ->
+                        actionScope.launch { localModels.useExternalFile(file.location)?.let(onMessage) }
+                    },
+                    onForget = { actionScope.launch { localModels.forgetExternalFile() } },
+                )
+            }
+        } else null,
         modelIconPainter = { definition ->
             painterResource(
                 when (definition.brand) {
@@ -158,6 +182,8 @@ fun LocalModelsPanel(
     modelIconPainter: @Composable (LocalModelDefinition) -> Painter,
     onModelSelected: (String) -> Unit,
     onAction: (String, LocalModelPresentationAction) -> Unit,
+    selectedFileName: String? = null,
+    externalFileContent: (@Composable () -> Unit)? = null,
 ) {
     val nanoRow = models.firstOrNull {
         !it.model.downloadable &&
@@ -204,7 +230,7 @@ fun LocalModelsPanel(
             if (nanoRow != null) SettingsDivider()
             SettingRow(
                 title = "Downloadable models",
-                summary = downloadableRows.firstOrNull { it.presentation.selected }?.model?.displayName,
+                summary = selectedFileName ?: downloadableRows.firstOrNull { it.presentation.selected }?.model?.displayName,
                 icon = Res.drawable.ic_keyboard_arrow_down,
                 iconModifier = Modifier.graphicsLayer { rotationZ = caretRotation },
                 onClick = { expansionChoice = !expanded },
@@ -237,10 +263,53 @@ fun LocalModelsPanel(
                         fontSize = 11.sp,
                         lineHeight = 14.sp,
                     )
+                    externalFileContent?.invoke()
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ExternalModelFileSetting(
+    state: LocalModelManagerState,
+    onChoose: () -> Unit,
+    onUse: (ExternalModelFile) -> Unit,
+    onForget: () -> Unit,
+) {
+    val file = state.externalFile
+    OutlinedButton(onClick = onChoose, modifier = Modifier.padding(top = 8.dp)) {
+        Text(if (file == null) "Choose model file…" else "Change model file…")
+    }
+    if (file == null) {
+        Text("Use a .litertlm file already on this device.", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    val selected = state.selectedModelId == ExternalModelFile.ID
+    val runtime = state.runtimeStatuses[LocalModelRuntime.LITERT_LM]
+    val fileError = state.statuses[ExternalModelFile.ID]?.error
+    val status = when {
+        !fileError.isNullOrEmpty() -> fileError
+        runtime?.active == true -> "Installing local AI runtime…"
+        runtime?.state == LocalRuntimeInstallState.FAILED && runtime.pendingModelId == ExternalModelFile.ID ->
+            runtime.error.ifBlank { "Runtime installation failed. Tap to retry." }
+        runtime?.state != LocalRuntimeInstallState.INSTALLED -> "Tap to install the local AI runtime."
+        else -> null
+    }
+    Row(
+        Modifier.fillMaxWidth().selectable(selected, role = Role.RadioButton, onClick = { onUse(file) })
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Column(Modifier.padding(start = 12.dp)) {
+            Text(file.name, style = MaterialTheme.typography.titleSmall)
+            Text("LiteRT-LM · ${formatDecimalBytes(file.sizeBytes)}", style = MaterialTheme.typography.bodySmall)
+            Text(file.displayPath, style = MaterialTheme.typography.bodySmall)
+            status?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    TextButton(onClick = onForget) { Text("Unlink file") }
 }
 
 @Composable

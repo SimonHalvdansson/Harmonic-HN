@@ -153,6 +153,16 @@ private fun DesktopAiSettings(
                     nanoAvailable = availabilityState.nanoAvailable,
                     nanoBaseModelName = "System managed",
                     managedModelStatus = availabilityState.statusMessage,
+                    onChooseModelFile = {
+                        val picker = JFileChooser().apply {
+                            dialogTitle = "Choose a local model file"
+                            fileFilter = FileNameExtensionFilter("LiteRT-LM models (*.litertlm)", "litertlm")
+                            isAcceptAllFileFilterUsed = false
+                        }
+                        if (picker.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                            scope.launch { localModels.useExternalFile(picker.selectedFile.absolutePath)?.let(showMessage) }
+                        }
+                    },
                     onChanged = { refresh++ },
                     onMessage = showMessage,
                 )

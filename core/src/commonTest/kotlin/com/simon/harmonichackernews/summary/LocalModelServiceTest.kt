@@ -18,6 +18,62 @@ import kotlinx.coroutines.test.runCurrent
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class LocalModelServiceTest {
     @Test
+    fun linkedFileSurvivesRestartAndManagedStorageCleanupUntilUnlinked() = runTest {
+        val preferences = TestKeyValueStore()
+        val file = ExternalModelFile("/shared/model.litertlm", "model.litertlm", 3_000_000_000L)
+        val released = mutableListOf<String>()
+        var readable = true
+        val access = object : ExternalModelAccess {
+            override fun inspect(location: String): ExternalModelFile {
+                require(readable && location == file.location)
+                return file
+            }
+            override fun release(location: String) { released += location }
+            override suspend fun <T> withPath(file: ExternalModelFile, use: suspend (String) -> T) = use(file.location)
+        }
+        val transfers = RecordingTransfers()
+        val runtimeRequests = mutableListOf<String>()
+        val delivery = object : LocalModelRuntimeDelivery by RecordingRuntimeDelivery() {
+            override val included = true
+            override suspend fun request(model: LocalModelDefinition): String? {
+                runtimeRequests += model.id
+                return null
+            }
+        }
+        fun service() = LocalModelService(
+            preferences, EmptyStorage, transfers, delivery, LocalModelDeviceCapabilities(true, true),
+            listOf(BuiltInModel, DownloadableModel), externalFiles = access, scope = backgroundScope,
+            storageDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        val first = service()
+        assertNull(first.useExternalFile(file.location))
+        assertEquals(listOf(ExternalModelFile.ID), runtimeRequests)
+        assertNull(first.requestModelDownload(ExternalModelFile.ID))
+        assertTrue(transfers.enqueued.isEmpty())
+        first.close()
+
+        val reopened = service()
+        reopened.preload()
+        assertEquals(file, reopened.cachedState.value.externalFile)
+        assertTrue(reopened.isDownloaded(reopened.selectedModel))
+        assertEquals(file.location, reopened.withModelPath(reopened.selectedModel) { it })
+        assertNotNull(reopened.useExternalFile("/invalid"))
+        assertTrue(reopened.clearStoredModels())
+        assertEquals(file, reopened.selectedModel.externalFile)
+        readable = false
+        reopened.preload()
+        assertFalse(reopened.isDownloaded(reopened.selectedModel))
+        assertEquals(file, reopened.cachedState.value.externalFile)
+        assertTrue(reopened.select(BuiltInModel.id))
+        reopened.forgetExternalFile()
+        reopened.preload()
+        assertEquals(BuiltInModel, reopened.selectedModel)
+        assertNull(reopened.cachedState.value.externalFile)
+        assertEquals(listOf(file.location), released)
+        reopened.close()
+    }
+
+    @Test
     fun downloadWaitsForDeliveryBeforeChoosingBetweenRuntimeAndModel() = runTest {
         val ready = CompletableDeferred<Unit>()
         val transfers = RecordingTransfers()

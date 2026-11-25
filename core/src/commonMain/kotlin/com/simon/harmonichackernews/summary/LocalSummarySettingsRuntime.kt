@@ -44,7 +44,7 @@ class LocalSummarySettingsRuntime(
                 val useLora = useGeminiNanoSummarizationLora()
                 val availability = summary.availability(useLora)
                 val nanoAvailable = availability.available && !availability.downloadableFallbackRequired
-                if (!nanoAvailable && models?.selectedModel?.downloadable == false) {
+                if (!nanoAvailable && models?.selectedModel?.systemManaged == true) {
                     models.selectFirstReadyOrClear()
                 }
                 mutableState.value = LocalSummarySettingsState(

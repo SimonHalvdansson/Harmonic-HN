@@ -28,7 +28,10 @@ data class LocalModelDefinition(
     val runtime: LocalModelRuntime,
     val contextTokens: Int,
     val supportsSummarization: Boolean = true,
-)
+    val externalFile: ExternalModelFile? = null,
+) {
+    val systemManaged: Boolean get() = !downloadable && externalFile == null
+}
 
 /** Portable, immutable catalog. Platform shells only map [LocalModelBrand] to artwork. */
 object LocalModelCatalog {
