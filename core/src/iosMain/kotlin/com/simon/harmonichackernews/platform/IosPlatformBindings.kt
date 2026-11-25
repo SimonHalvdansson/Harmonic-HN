@@ -33,6 +33,7 @@ class IosPlatformBindings(
     val nativeArticleEmbeddings: IosArticleEmbeddingBridge? = null,
     val modelTransfers: LocalModelTransferScheduler? = null,
     val readAloud: IosReadAloudHost? = null,
+    val commentTranslation: IosCommentTranslationBridge? = null,
 ) {
     val localSummary: LocalSummaryEngine? =
         localSummary ?: nativeLocalSummary?.let(::IosNativeLocalSummaryEngine)
@@ -60,4 +61,5 @@ fun createIosPlatformDependencies(
     timeFormatting = bindings.timeFormatting,
     replyNotifications = bindings.replyNotifications,
     localSummary = localSummary,
+    commentTranslation = bindings.commentTranslation?.let(::IosCommentTranslationService),
 )

@@ -2056,6 +2056,38 @@ final class HarmonicIosUITests: XCTestCase {
         keepScreenshot("Expanded comments after leaving side by side")
     }
 
+    func testCommentTranslationShowsOriginalAndTranslatedPreviewWithoutGoogleAttribution() {
+        let original = "J’aime tout ce que l’on peut apprendre en lisant une bonne discussion."
+        let translated = "I love how much you can learn from a good discussion."
+        app.launchEnvironment["HARMONIC_TEST_TRANSLATION_SOURCE"] = original
+        app.launchEnvironment["HARMONIC_TEST_TRANSLATION_RESULT"] = translated
+        app.launch()
+        completeFirstRunIfNeeded()
+        openSettings()
+        app.tapVisibleButton("Comments")
+        app.tapVisibleButton("Comment translation")
+
+        let toggle = app.switches["Translate comments"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        toggle.tapCenter()
+        let translate = app.labeledButton("Translate comment")
+        XCTAssertTrue(translate.waitForExistence(timeout: 5))
+        keepScreenshot("Comment translation - original")
+        translate.tapCenter()
+        let showOriginal = app.labeledButton("Show original comment")
+        XCTAssertTrue(showOriginal.waitForExistence(timeout: 10))
+        let preview = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", translated)).firstMatch
+        XCTAssertTrue(preview.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["Translated by Google"].exists)
+        XCTAssertFalse(app.labeledButton("Translation disclaimer").exists)
+        keepScreenshot("Comment translation - translated fixture")
+        showOriginal.tapCenter()
+        XCTAssertTrue(translate.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", original)).firstMatch.exists)
+        app.tapVisibleButton("Translate to")
+        keepScreenshot("Comment translation - system languages")
+    }
+
     func testSettingsAndNavigateUp() throws {
         openSettings()
         XCTAssertTrue(app.labeledButton("Appearance").exists)

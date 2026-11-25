@@ -201,7 +201,7 @@ final class IosBackgroundModelTransfersTests: XCTestCase {
         let model = LocalModelDefinition(id: "test-model", displayName: "Test", parameterSize: "",
             quantization: "", brand: .google, fileName: "model.litertlm", url: server!.url,
             sizeBytes: 4, downloadable: true, runtime: .litertLm, contextTokens: 16,
-            supportsSummarization: true)
+            supportsSummarization: true, externalFile: nil)
         transfers = IosBackgroundModelTransfers(directory: directory, identifier: "test-download",
             configuration: .ephemeral, catalog: [model], availableBytes: availableBytes)
         waitUntil { !self.transfers!.isActive(modelId: model.id) }

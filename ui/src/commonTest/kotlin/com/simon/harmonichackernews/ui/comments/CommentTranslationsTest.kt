@@ -1,5 +1,6 @@
 package com.simon.harmonichackernews.ui.comments
 
+import com.simon.harmonichackernews.platform.TranslationLanguages
 import com.simon.harmonichackernews.platform.CommentTranslationService
 import com.simon.harmonichackernews.platform.CommentTranslationResult
 import com.simon.harmonichackernews.settings.CommentTranslationMode
@@ -34,8 +35,7 @@ class CommentTranslationsTest {
         val response = CompletableDeferred<Unit>()
         var calls = 0
         val service = object : CommentTranslationService {
-            override val defaultLanguage = "fr"
-            override val languages = mapOf("fr" to "French")
+            override suspend fun languageOptions() = TranslationLanguages("fr", mapOf("fr" to "French"))
             override suspend fun translate(html: String, targetLanguage: String): CommentTranslationResult {
                 calls++
                 response.await()

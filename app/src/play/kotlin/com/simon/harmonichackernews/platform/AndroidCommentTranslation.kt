@@ -12,11 +12,12 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 
 internal val androidCommentTranslation: CommentTranslationService = object : CommentTranslationService {
-    override val defaultLanguage: String
-        get() = TranslateLanguage.fromLanguageTag(Locale.getDefault().toLanguageTag()) ?: TranslateLanguage.ENGLISH
+    override val requiresGoogleAttribution = true
 
-    override val languages: Map<String, String>
-        get() = TranslateLanguage.getAllLanguages().associateWith { Locale.forLanguageTag(it).displayLanguage }
+    override suspend fun languageOptions() = TranslationLanguages(
+        TranslateLanguage.fromLanguageTag(Locale.getDefault().toLanguageTag()) ?: TranslateLanguage.ENGLISH,
+        TranslateLanguage.getAllLanguages().associateWith { Locale.forLanguageTag(it).displayLanguage },
+    )
 
     override suspend fun translate(html: String, targetLanguage: String): CommentTranslationResult = withContext(Dispatchers.IO) {
         val document = TranslatableComment(html)

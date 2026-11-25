@@ -22,6 +22,7 @@ class TranslatableComment(html: String) {
         }
         visit(document.body())
     }
+    val segments: List<String> get() = prose.map { it.getWholeText().trim() }
     val languageSample: String get() = prose.joinToString(" ") { it.getWholeText().trim() }.take(1000)
 
     suspend fun translate(transform: suspend (String) -> String): String {

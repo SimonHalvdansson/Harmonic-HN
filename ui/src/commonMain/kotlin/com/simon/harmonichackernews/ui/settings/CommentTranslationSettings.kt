@@ -42,16 +42,23 @@ import kotlin.time.Clock
 @Composable
 fun CommentTranslationSettingsRoute(repository: AppSettingsRepository, onBack: () -> Unit) {
     val service = LocalCommentTranslation.current
-    if (service == null) {
+    val options = service?.rememberLanguageOptions()
+    if (service == null || options == null || options.names.isEmpty()) {
         SettingsPage(title = "Comment translation", showNavigation = true, onBack = onBack) {
-            item { SettingsDialogBodyText("Translation is unavailable in this build.") }
+            item {
+                SettingsDialogBodyText(when {
+                    service == null -> "Translation is unavailable in this build."
+                    options == null -> "Loading languages…"
+                    else -> "Translation languages are unavailable on this device."
+                })
+            }
         }
         return
     }
     val settings by repository.updates.collectAsStateWithLifecycle(initialValue = repository.snapshot())
     val prefs = settings.comments.translation
-    val defaultLanguage = service.defaultLanguage
-    val languages = remember(service, defaultLanguage) { service.languages }
+    val defaultLanguage = options.defaultLanguage
+    val languages = options.names
     val defaultLabel = "Device language (" + languages.getValue(defaultLanguage) + ")"
     var showDisclaimer by rememberSaveable { mutableStateOf(false) }
     var chooseLanguage by rememberSaveable { mutableStateOf(false) }
@@ -94,15 +101,18 @@ fun CommentTranslationSettingsRoute(repository: AppSettingsRepository, onBack: (
         }
         item {
             Column(Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)) {
-                Text("Google Translate runs on this device. Language models download on first use.",
+                val explanation = if (service.requiresGoogleAttribution)
+                    "Google Translate runs on this device. Language models download on first use."
+                else "Comments are translated on this device. iOS may ask you to download a language."
+                Text(explanation,
                     style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { showDisclaimer = true }, contentPadding = PaddingValues(vertical = 4.dp)) {
+                if (service.requiresGoogleAttribution) TextButton(onClick = { showDisclaimer = true }, contentPadding = PaddingValues(vertical = 4.dp)) {
                     Text("Translation disclaimer", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
     }
-    if (showDisclaimer) MessageActionDialog(
+    if (showDisclaimer && service.requiresGoogleAttribution) MessageActionDialog(
         title = "Translation disclaimer",
         message = "THIS SERVICE MAY CONTAIN TRANSLATIONS POWERED BY GOOGLE. " +
             "GOOGLE DISCLAIMS ALL WARRANTIES RELATED TO THE TRANSLATIONS, EXPRESS OR IMPLIED, " +
@@ -138,7 +148,7 @@ private fun TranslationCommentPreview(display: CommentDisplaySettings, language:
         )
     }
     val sample = remember(language) {
-        val body = if (language == "fr") "I love how much you can learn from a good discussion."
+        val body = if (language.substringBefore('-') == "fr") "I love how much you can learn from a good discussion."
             else "J’aime tout ce que l’on peut apprendre en lisant une bonne discussion."
         PortableCommentItem(
             CommentSnapshot(id = 1, author = "alice", text = body, expandedAnchorText = body,

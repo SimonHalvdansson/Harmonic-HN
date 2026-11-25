@@ -23,6 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.getValue
+import com.simon.harmonichackernews.platform.TranslationLanguages
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -109,10 +112,14 @@ internal class CommentTranslations {
 internal fun translationTarget(preferences: CommentTranslationPreferences): String? {
     val service = LocalCommentTranslation.current ?: return null
     if (!preferences.enabled) return null
-    val default = service.defaultLanguage
-    return remember(service, preferences.language, default) {
-        preferences.language.takeIf { it in service.languages } ?: default
-    }
+    val options = service.rememberLanguageOptions() ?: return null
+    return preferences.language.takeIf { it in options.names } ?: options.defaultLanguage.takeIf { it in options.names }
+}
+
+@Composable
+internal fun CommentTranslationService.rememberLanguageOptions(): TranslationLanguages? {
+    val options by produceState<TranslationLanguages?>(null, this) { value = languageOptions() }
+    return options
 }
 
 @Composable
@@ -174,7 +181,8 @@ internal fun TranslationButton(key: TranslationKey, translations: CommentTransla
         state?.loading == true -> "Translating comment"
         state?.visibleHtml != null -> "Show original comment"
         state?.notice != null -> state.notice
-        else -> "Translate with Google"
+        service.requiresGoogleAttribution -> "Translate with Google"
+        else -> "Translate comment"
     }
     HarmonicTooltip(label) {
         IconButton(
@@ -243,7 +251,7 @@ internal fun TranslationContent(
             } else {
                 content(body.html)
             }
-            if (body.translated) {
+            if (body.translated && LocalCommentTranslation.current?.requiresGoogleAttribution == true) {
                 Image(
                     painterResource(if (HarmonicTheme.isDark) Res.drawable.translated_by_google_white else Res.drawable.translated_by_google_greyscale),
                     contentDescription = "Translated by Google",

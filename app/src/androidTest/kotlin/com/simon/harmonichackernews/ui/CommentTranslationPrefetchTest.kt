@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.simon.harmonichackernews.data.CommentPresentationSnapshot
 import com.simon.harmonichackernews.data.CommentSnapshot
 import com.simon.harmonichackernews.platform.CommentTranslationResult
+import com.simon.harmonichackernews.platform.TranslationLanguages
 import com.simon.harmonichackernews.platform.CommentTranslationService
 import com.simon.harmonichackernews.presentation.PortableCommentItem
 import com.simon.harmonichackernews.presentation.PortableVisibleComment
@@ -35,8 +36,7 @@ class CommentTranslationPrefetchTest {
         val rows = mutableStateOf(listOf(parent) + (2..19).map { row(it, 1, 1) } + sibling)
         val calls = mutableListOf<String>()
         val service = object : CommentTranslationService {
-            override val languages = mapOf("fr" to "French")
-            override val defaultLanguage = "fr"
+            override suspend fun languageOptions() = TranslationLanguages("fr", mapOf("fr" to "French"))
             override suspend fun translate(html: String, targetLanguage: String): CommentTranslationResult {
                 calls += html
                 return CommentTranslationResult.Translated("Traduction de $html")

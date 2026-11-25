@@ -109,6 +109,9 @@ fun PortableSettingsDetail(
             onThreadDepthRequested = { onNavigate(SettingsSection.ThreadDepth, true) },
             onQuoteHighlightingRequested = { onNavigate(SettingsSection.QuoteHighlighting, true) },
             onMonoBlocksRequested = { onNavigate(SettingsSection.MonoBlocks, true) },
+            onTranslationRequested = app.platform.commentTranslation?.let {
+                { onNavigate(SettingsSection.CommentTranslation, true) }
+            },
             onUserAvatarsRequested = { onNavigate(SettingsSection.UserAvatars, true) },
         )
         SettingsSection.StoriesSpacing -> StoriesSpacingSettingsRoute(app.settings, app.articleCategorySettings, onBack)

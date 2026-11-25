@@ -21,6 +21,7 @@
 		A10000000000000000000006 /* IosAccountStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* IosAccountStorage.swift */; };
 		A10000000000000000000007 /* IosBrowserViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* IosBrowserViewController.swift */; };
 		A10000000000000000000008 /* IosTextDocumentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* IosTextDocumentService.swift */; };
+		A100000000000000000000D1 /* IosCommentTranslation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A200000000000000000000D1 /* IosCommentTranslation.swift */; };
 		A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* IosLiteRtSummaryService.swift */; };
 		A10000000000000000000011 /* IosArticleEmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* IosArticleEmbeddingService.swift */; };
 		A10000000000000000000010 /* LiteRTLM in Frameworks */ = {isa = PBXBuildFile; productRef = AC0000000000000000000002 /* LiteRTLM */; };
@@ -58,6 +59,7 @@
 		A20000000000000000000006 /* IosAccountStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosAccountStorage.swift; sourceTree = "<group>"; };
 		A20000000000000000000007 /* IosBrowserViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosBrowserViewController.swift; sourceTree = "<group>"; };
 		A20000000000000000000008 /* IosTextDocumentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosTextDocumentService.swift; sourceTree = "<group>"; };
+		A200000000000000000000D1 /* IosCommentTranslation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosCommentTranslation.swift; sourceTree = "<group>"; };
 		A20000000000000000000009 /* IosLiteRtSummaryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLiteRtSummaryService.swift; sourceTree = "<group>"; };
 		A20000000000000000000011 /* IosArticleEmbeddingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosArticleEmbeddingService.swift; sourceTree = "<group>"; };
 		C20000000000000000000001 /* IosLocalAiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IosLocalAiTests.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 				A20000000000000000000014 /* IosReplyNotifications.swift */,
 				A20000000000000000000015 /* IosReadAloud.swift */,
 				A20000000000000000000008 /* IosTextDocumentService.swift */,
+				A200000000000000000000D1 /* IosCommentTranslation.swift */,
 				A20000000000000000000009 /* IosLiteRtSummaryService.swift */,
 				A20000000000000000000011 /* IosArticleEmbeddingService.swift */,
 				A20000000000000000000007 /* IosBrowserViewController.swift */,
@@ -326,6 +329,7 @@
 				A10000000000000000000014 /* IosReplyNotifications.swift in Sources */,
 				A10000000000000000000015 /* IosReadAloud.swift in Sources */,
 				A10000000000000000000008 /* IosTextDocumentService.swift in Sources */,
+				A100000000000000000000D1 /* IosCommentTranslation.swift in Sources */,
 				A10000000000000000000009 /* IosLiteRtSummaryService.swift in Sources */,
 				A10000000000000000000011 /* IosArticleEmbeddingService.swift in Sources */,
 				A10000000000000000000007 /* IosBrowserViewController.swift in Sources */,

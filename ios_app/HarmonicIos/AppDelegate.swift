@@ -143,7 +143,8 @@ final class HarmonicProcess {
             nativeLiteRt: services.liteRt,
             nativeArticleEmbeddings: services.articleEmbeddings,
             modelTransfers: IosBackgroundModelTransfers.shared,
-            readAloud: IosReadAloud()
+            readAloud: IosReadAloud(),
+            commentTranslation: IosCommentTranslation()
         )
         bootstrap = IosHarmonicAppBootstrap(userAgent: "Harmonic-HN-iOS/\(metadata.versionName)", bindings: bindings, runtime: runtime)
     }

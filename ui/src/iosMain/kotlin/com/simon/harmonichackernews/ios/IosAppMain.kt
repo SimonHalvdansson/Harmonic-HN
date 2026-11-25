@@ -921,6 +921,7 @@ private fun IosSettingsShell(
                 onSectionChanged = { scene.navigation.updateSettingsSection(it.route) },
                 animateDetailChanges = true,
                 searchCapabilities = SettingsSearchCapabilities(
+                    commentTranslation = app.platform.commentTranslation != null,
                     webLinks = WebLinksSettingsCapabilities(adBlocking = false, closeWebViewOnBack = false),
                     systemSettings = false, volumeNavigation = false, transparentStatusBar = false,
                     twoPane = supportsTwoPane,
