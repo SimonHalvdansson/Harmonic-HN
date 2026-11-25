@@ -7,7 +7,6 @@ import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -86,11 +85,7 @@ internal fun ReferenceLinkRow(
     val colors = MaterialTheme.colorScheme
     val resolvedExpandedUrl = expandedUrl?.takeIf { hasReferenceLinkTitle(label, it) }
     var visible by remember { mutableStateOf(false) }
-    val faviconSize = if (visible) animateDpAsState(
-        targetValue = if (resolvedExpandedUrl != null) 21.dp else 17.dp,
-        animationSpec = contentTween(),
-        label = "collected link favicon size",
-    ).value else if (resolvedExpandedUrl != null) 21.dp else 17.dp
+    val faviconSize = 20.dp
     val geometry = remember { ReferenceLinkGeometry() }
     var captureRequested by remember { mutableStateOf(false) }
     var pendingLongClick by remember { mutableStateOf(false) }
@@ -157,7 +152,7 @@ internal fun ReferenceLinkRow(
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .size(faviconSize)
-                        .clip(RoundedCornerShape(faviconSize * (3f / 17f))),
+                        .clip(RoundedCornerShape(4.dp)),
                 )
             }
             Box(Modifier.weight(1f)) {

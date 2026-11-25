@@ -63,18 +63,12 @@ internal fun GitHubPreview(story: StoryListItemSnapshot) {
         )
         PreviewBody(info.about.orEmpty())
         PreviewInfoColumns(
-            left = {
-                PreviewInfoRow(Res.drawable.ic_star, info.formatStars())
-                PreviewInfoRow(Res.drawable.ic_visibility, info.formatWatching())
-                PreviewInfoRow(Res.drawable.ic_fork_right, info.formatForks())
-            },
-            right = {
-                PreviewInfoRow(Res.drawable.ic_link, info.shortenedUrl) {
-                    platform.openLink(info.website)
-                }
-                PreviewInfoRow(Res.drawable.ic_attribution, info.license)
-                PreviewInfoRow(Res.drawable.ic_library_books, info.language)
-            },
+            PreviewInfo(Res.drawable.ic_star, info.formatStars()),
+            PreviewInfo(Res.drawable.ic_visibility, info.formatWatching()),
+            PreviewInfo(Res.drawable.ic_fork_right, info.formatForks()),
+            PreviewInfo(Res.drawable.ic_link, info.shortenedUrl) { platform.openLink(info.website) },
+            PreviewInfo(Res.drawable.ic_attribution, info.license),
+            PreviewInfo(Res.drawable.ic_library_books, info.language),
         )
     }
 }
@@ -90,17 +84,11 @@ internal fun GitLabPreview(story: StoryListItemSnapshot) {
         )
         PreviewBody(info.description.orEmpty())
         PreviewInfoColumns(
-            left = {
-                PreviewInfoRow(Res.drawable.ic_star, info.formatStars())
-                PreviewInfoRow(Res.drawable.ic_fork_right, info.formatForks())
-            },
-            right = {
-                PreviewInfoRow(Res.drawable.ic_link, info.shortenedUrl) {
-                    platform.openLink(info.website)
-                }
-                PreviewInfoRow(Res.drawable.ic_visibility, info.formatVisibility())
-                PreviewInfoRow(Res.drawable.ic_library_books, info.language)
-            },
+            PreviewInfo(Res.drawable.ic_star, info.formatStars()),
+            PreviewInfo(Res.drawable.ic_fork_right, info.formatForks()),
+            PreviewInfo(Res.drawable.ic_link, info.shortenedUrl) { platform.openLink(info.website) },
+            PreviewInfo(Res.drawable.ic_visibility, info.formatVisibility()),
+            PreviewInfo(Res.drawable.ic_library_books, info.language),
         )
     }
 }
@@ -117,15 +105,11 @@ internal fun HuggingFacePreview(story: StoryListItemSnapshot) {
         )
         PreviewBody(info.formatCapability())
         PreviewInfoColumns(
-            left = {
-                PreviewInfoRow(Res.drawable.ic_favorite, info.formatLikes())
-                PreviewInfoRow(Res.drawable.ic_file_download, info.formatDownloads())
-                PreviewInfoRow(Res.drawable.ic_deployed_code, info.formatParameters())
-            },
-            right = {
-                PreviewInfoRow(Res.drawable.ic_attribution, info.formatLicense())
-                PreviewInfoRow(Res.drawable.ic_schedule, info.formatUpdated())
-            },
+            PreviewInfo(Res.drawable.ic_favorite, info.formatLikes()),
+            PreviewInfo(Res.drawable.ic_file_download, info.formatDownloads()),
+            PreviewInfo(Res.drawable.ic_deployed_code, info.formatParameters()),
+            PreviewInfo(Res.drawable.ic_attribution, info.formatLicense()),
+            PreviewInfo(Res.drawable.ic_schedule, info.formatUpdated()),
         )
     }
 }
@@ -142,16 +126,12 @@ internal fun OpenRouterPreview(story: StoryListItemSnapshot) {
         )
         PreviewBody(info.description.orEmpty(), maxLines = 12)
         PreviewInfoColumns(
-            left = {
-                PreviewInfoRow(Res.drawable.ic_file_download, info.formatPromptPrice())
-                PreviewInfoRow(Res.drawable.ic_arrow_upward, info.formatCompletionPrice())
-                PreviewInfoRow(Res.drawable.ic_stacks, info.formatContext())
-            },
-            right = {
-                PreviewInfoRow(Res.drawable.ic_perm_media, info.formatModalities())
-                PreviewInfoRow(Res.drawable.ic_open_in_new, info.formatMaxOutput())
-                PreviewInfoRow(Res.drawable.ic_calendar_today, info.formatKnowledgeCutoff())
-            },
+            PreviewInfo(Res.drawable.ic_file_download, info.formatPromptPrice()),
+            PreviewInfo(Res.drawable.ic_arrow_upward, info.formatCompletionPrice()),
+            PreviewInfo(Res.drawable.ic_stacks, info.formatContext()),
+            PreviewInfo(Res.drawable.ic_perm_media, info.formatModalities()),
+            PreviewInfo(Res.drawable.ic_open_in_new, info.formatMaxOutput()),
+            PreviewInfo(Res.drawable.ic_calendar_today, info.formatKnowledgeCutoff()),
         )
     }
 }
@@ -169,16 +149,12 @@ internal fun StackExchangePreview(story: StoryListItemSnapshot) {
         )
         PreviewBody(info.formatBy().orEmpty(), maxLines = 20, topPadding = 0.dp)
         PreviewInfoColumns(
-            left = {
-                PreviewInfoRow(Res.drawable.ic_star, info.formatScore())
-                PreviewInfoRow(Res.drawable.ic_comment, info.formatAnswerCount())
-                PreviewInfoRow(Res.drawable.ic_visibility, info.formatViewCount())
-            },
-            right = {
-                PreviewInfoRow(Res.drawable.ic_check, info.formatAnswerState())
-                PreviewInfoRow(Res.drawable.ic_library_books, info.formatTags())
-                PreviewInfoRow(Res.drawable.ic_person, info.formatAuthor())
-            },
+            PreviewInfo(Res.drawable.ic_star, info.formatScore()),
+            PreviewInfo(Res.drawable.ic_comment, info.formatAnswerCount()),
+            PreviewInfo(Res.drawable.ic_visibility, info.formatViewCount()),
+            PreviewInfo(Res.drawable.ic_check, info.formatAnswerState()),
+            PreviewInfo(Res.drawable.ic_library_books, info.formatTags()),
+            PreviewInfo(Res.drawable.ic_person, info.formatAuthor()),
         )
     }
 }
@@ -353,18 +329,7 @@ internal fun RichLinkPreview(story: StoryListItemSnapshot) {
                 topPadding = 4.dp,
             )
         }
-        if (details.left.isNotEmpty() || details.right.isNotEmpty()) PreviewInfoColumns(
-            left = {
-                details.left.forEach { detail ->
-                    RichPreviewDetail(detail, info.type)
-                }
-            },
-            right = {
-                details.right.forEach { detail ->
-                    RichPreviewDetail(detail, info.type)
-                }
-            },
-        )
+        PreviewInfoColumns(details.left, details.right) { detail -> RichPreviewDetail(detail, info.type) }
         details.fullWidth.forEach { detail -> RichPreviewDetail(detail, info.type) }
     }
 }

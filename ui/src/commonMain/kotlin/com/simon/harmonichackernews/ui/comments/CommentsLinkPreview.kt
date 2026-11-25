@@ -18,9 +18,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -274,17 +275,30 @@ internal fun PreviewInfoRow(
     }
 }
 
+internal data class PreviewInfo(val icon: DrawableResource, val text: String?, val onClick: (() -> Unit)? = null)
+
 @Composable
-internal fun PreviewInfoColumns(left: @Composable ColumnScope.() -> Unit, right: @Composable ColumnScope.() -> Unit) {
-    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // The old 40/60 split squeezed dates and short label/value pairs into two lines.
-        // Let each column have half the width, and stack them when scaled text needs more room.
-        if (maxWidth < 320.dp * androidx.compose.ui.platform.LocalDensity.current.fontScale) {
-            Column { left(); right() }
+internal fun PreviewInfoColumns(vararg items: PreviewInfo) {
+    val visible = items.filterNot { it.text.isNullOrBlank() }
+    val split = (visible.size + 1) / 2
+    PreviewInfoColumns(visible.take(split), visible.drop(split)) { item ->
+        PreviewInfoRow(item.icon, item.text, onClick = item.onClick)
+    }
+}
+
+@Composable
+internal fun <T> PreviewInfoColumns(left: List<T>, right: List<T>, itemContent: @Composable (T) -> Unit) {
+    if (left.isEmpty() && right.isEmpty()) return
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (right.isEmpty() || maxWidth < 320.dp * LocalDensity.current.fontScale) {
+            Column {
+                left.forEach { itemContent(it) }
+                right.forEach { itemContent(it) }
+            }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f), content = left)
-                Column(Modifier.weight(1f), content = right)
+                Column(Modifier.weight(1f)) { left.forEach { itemContent(it) } }
+                Column(Modifier.weight(1f)) { right.forEach { itemContent(it) } }
             }
         }
     }
