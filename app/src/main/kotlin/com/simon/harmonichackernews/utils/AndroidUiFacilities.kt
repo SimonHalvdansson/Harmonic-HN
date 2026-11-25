@@ -67,10 +67,15 @@ object AndroidNetworkStatus {
 
     fun isUnmetered(context: Context): Boolean = status(context).unmetered
 
-    private fun status(context: Context): AndroidConnectivityStatus {
+    fun isOnMobileData(context: Context): Boolean =
+        activeCapabilities(context)?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
+
+    private fun status(context: Context): AndroidConnectivityStatus =
+        AndroidConnectivityCapabilities.evaluate(activeCapabilities(context))
+
+    private fun activeCapabilities(context: Context): NetworkCapabilities? {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return AndroidConnectivityStatus.Offline
-        val network = manager.activeNetwork ?: return AndroidConnectivityStatus.Offline
-        return AndroidConnectivityCapabilities.evaluate(manager.getNetworkCapabilities(network))
+            ?: return null
+        return manager.getNetworkCapabilities(manager.activeNetwork)
     }
 }

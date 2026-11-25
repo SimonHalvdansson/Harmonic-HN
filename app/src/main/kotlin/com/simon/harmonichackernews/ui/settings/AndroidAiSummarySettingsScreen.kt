@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.simon.harmonichackernews.utils.AndroidNetworkStatus
 import com.simon.harmonichackernews.ui.LocalHarmonicUiDependencies
 import com.simon.harmonichackernews.presentation.UserMessageDuration
 import kotlinx.coroutines.launch
@@ -24,6 +26,7 @@ fun AndroidAiSummarySettingsScreen(
     onArticleCategoriesRequested: (() -> Unit)? = null,
 ) {
     val appComposition = LocalHarmonicUiDependencies.current
+    val context = LocalContext.current
     val repository = appComposition.aiSummarySettings
     val localModels = checkNotNull(appComposition.localModels) {
         "Android local-model service was not installed"
@@ -82,6 +85,7 @@ fun AndroidAiSummarySettingsScreen(
                 nanoBaseModelName = availabilityState.nanoBaseModelName,
                 localModels = localModels,
                 managerState = localModelState,
+                isOnMobileData = { AndroidNetworkStatus.isOnMobileData(context) },
                 onChooseModelFile = { modelPicker.launch(arrayOf("*/*")) },
                 onChanged = { localRefresh++ },
                 onMessage = { message ->

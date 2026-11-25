@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
@@ -79,6 +78,7 @@ import com.simon.harmonichackernews.summary.LocalModelPresentationAction
 import com.simon.harmonichackernews.summary.LocalModelRuntime
 import com.simon.harmonichackernews.summary.LocalModelService
 import com.simon.harmonichackernews.summary.formatDecimalBytes
+import com.simon.harmonichackernews.ui.common.OutlinedButton
 import com.simon.harmonichackernews.ui.theme.AppUiFontFamily
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.rememberCoroutineScope
@@ -101,9 +101,34 @@ fun LocalModelsRoute(
     managedModelStatus: String? = null,
     onChooseModelFile: (() -> Unit)? = null,
     onChanged: () -> Unit = {},
+    isOnMobileData: () -> Boolean = { false },
     onMessage: (String) -> Unit,
 ) {
     val actionScope = rememberCoroutineScope()
+    var pendingDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun download(modelId: String) {
+        actionScope.launch {
+            localModels.requestRuntimeAndModelDownload(modelId)?.takeIf(String::isNotBlank)?.let(onMessage)
+            onChanged()
+        }
+    }
+
+    models.firstOrNull { it.id == pendingDownloadId }?.let { model ->
+        MessageActionDialog(
+            title = "Download using mobile data?",
+            message = "The ${model.displayName} model is ${formatDecimalBytes(model.sizeBytes)}. " +
+                "This download may count toward your data plan.",
+            positiveLabel = "Download",
+            negativeLabel = "Cancel",
+            onPositive = {
+                pendingDownloadId = null
+                download(model.id)
+            },
+            onNegative = { pendingDownloadId = null },
+            onDismiss = { pendingDownloadId = null },
+        )
+    }
     val rows = models.map { definition ->
         LocalModelRowUiState(
             model = definition,
@@ -159,17 +184,18 @@ fun LocalModelsRoute(
             }
         },
         onAction = { modelId, action ->
-            actionScope.launch {
-                when (action) {
-                    LocalModelPresentationAction.CANCEL_DOWNLOAD -> localModels.cancel(modelId)
-                    LocalModelPresentationAction.DELETE_MODEL -> localModels.remove(modelId)
-                    LocalModelPresentationAction.DOWNLOAD_MODEL -> {
-                        localModels.requestRuntimeAndModelDownload(modelId)
-                            ?.takeIf(String::isNotBlank)
-                            ?.let(onMessage)
-                    }
+            when (action) {
+                LocalModelPresentationAction.DOWNLOAD_MODEL -> {
+                    if (isOnMobileData()) pendingDownloadId = modelId else download(modelId)
                 }
-                onChanged()
+                LocalModelPresentationAction.CANCEL_DOWNLOAD -> actionScope.launch {
+                    localModels.cancel(modelId)
+                    onChanged()
+                }
+                LocalModelPresentationAction.DELETE_MODEL -> actionScope.launch {
+                    localModels.remove(modelId)
+                    onChanged()
+                }
             }
         },
     )
@@ -255,8 +281,7 @@ fun LocalModelsPanel(
                     }
                     Text(
                         text = "Downloadable models run in separate runtimes and are not kept in " +
-                            "memory so must be loaded before each use. Generally requires a strong " +
-                            "device to run in reasonable time.",
+                            "memory so must be loaded before each use.",
                         modifier = Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = AppUiFontFamily,
@@ -279,7 +304,7 @@ private fun ExternalModelFileSetting(
 ) {
     val file = state.externalFile
     OutlinedButton(onClick = onChoose, modifier = Modifier.padding(top = 8.dp)) {
-        Text(if (file == null) "Choose model file…" else "Change model file…")
+        Text(if (file == null) "Choose model file" else "Change model file")
     }
     if (file == null) {
         Text("Use a .litertlm file already on this device.", style = MaterialTheme.typography.bodySmall)
