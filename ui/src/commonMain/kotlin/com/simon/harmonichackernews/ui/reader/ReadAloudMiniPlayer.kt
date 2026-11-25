@@ -134,7 +134,11 @@ fun ReadAloudMiniPlayer(
                         Icon(painterResource(Res.drawable.ic_stop), "Stop reading", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                androidx.compose.animation.AnimatedVisibility(expanded) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = expanded,
+                    enter = expandVertically(tween(240), expandFrom = Alignment.Top) + fadeIn(tween(180)),
+                    exit = shrinkVertically(tween(200), shrinkTowards = Alignment.Top) + fadeOut(tween(140)),
+                ) {
                     SeekControls(state, ::seek)
                 }
             }
