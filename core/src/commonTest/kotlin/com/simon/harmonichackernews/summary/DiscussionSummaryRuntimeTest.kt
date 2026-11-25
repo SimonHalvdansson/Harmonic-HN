@@ -43,6 +43,7 @@ class DiscussionSummaryRuntimeTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val settings = AiSummarySettingsRepository(TestKeyValueStore(), TestCredentialStore(), emptyFlow(), dispatcher)
         settings.setMode(AiSummaryMode.LOCAL)
+        settings.setText(AiSummaryTextSetting.DISCUSSION_SYSTEM_PROMPT, "Explain the main disagreement.")
         val requests = mutableListOf<SummaryRequest>()
         val engine = object : LocalSummaryEngine {
             override suspend fun isAvailable() = true
@@ -59,6 +60,7 @@ class DiscussionSummaryRuntimeTest {
         assertEquals("Discussion result", runtime.state.value.text)
         assertEquals(2, requests.size)
         assertTrue(requests[1].text.length < requests[0].text.length)
+        assertTrue(requests.all { it.prompt == "Explain the main disagreement." })
         assertTrue(requests.all { it.preserveInput && !it.useGeminiNanoSummarizationLora })
         runtime.open("Title", null, source, false)
         advanceUntilIdle()
@@ -210,6 +212,7 @@ class DiscussionSummaryRuntimeTest {
         settings.setModel("configured-model")
         assertTrue(settings.setText(AiSummaryTextSetting.API_KEY, "test-key"))
         settings.setText(AiSummaryTextSetting.SYSTEM_PROMPT, "Custom article prompt")
+        settings.setText(AiSummaryTextSetting.DISCUSSION_SYSTEM_PROMPT, "Describe the strongest disagreement.")
         val requests = mutableListOf<CloudSummaryConfig>()
         val cloud = SummaryUseCase(object : CloudSummaryRepository {
             override suspend fun fetchModelIds(baseUrl: String, apiKey: String): List<String> = error("No model lookup")
@@ -231,7 +234,7 @@ class DiscussionSummaryRuntimeTest {
         val config = requests.single()
         assertEquals("configured-model", config.model)
         assertEquals("test-key", config.apiKey)
-        assertTrue(config.systemPrompt.contains("Hacker News discussion"))
+        assertEquals("Describe the strongest disagreement.", config.systemPrompt)
         assertTrue(config.inputCharacterLimit > 15_000)
         assertEquals(73, runtime.state.value.coverage?.included)
         assertEquals("This discussion is too large for the selected model.", runtime.state.value.error)

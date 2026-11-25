@@ -247,6 +247,7 @@ class SettingsTransfer(private val store: KeyValueStore, private val scheduleSto
             GlassSwitch.entries.forEach { put(it.storageKey, booleanRule) }
             put(GlassSurfaceProfile.STORAGE_KEY, choice(GlassSurfaceProfile.entries.map { it.name }))
             put(AiSummaryPreferenceKeys.GEMINI_NANO_SUMMARY_MODE, choice(GeminiNanoSummaryMode.entries.map { it.storedValue }))
+            put(AiSummaryPreferenceKeys.DISCUSSION_SYSTEM_PROMPT, stringRule(16000) { it.takeIf(String::isNotBlank) })
             put(AiSummaryPreferenceKeys.SYSTEM_PROMPT, stringRule(16000) { it.takeIf(String::isNotBlank) })
         }
     }

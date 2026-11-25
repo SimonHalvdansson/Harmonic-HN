@@ -23,6 +23,7 @@ object AiSummaryPreferenceKeys {
     const val MODE = "pref_ai_summary_mode"
     const val BASE_URL = "pref_ai_summary_base_url"
     const val MODEL = "pref_ai_summary_model"
+    const val DISCUSSION_SYSTEM_PROMPT = "pref_ai_discussion_system_prompt"
     const val SYSTEM_PROMPT = "pref_ai_summary_system_prompt"
     const val STREAM_RESPONSES = "pref_ai_summary_stream_responses"
     const val AUTO_SUMMARIZE_ARTICLES = "pref_ai_summary_auto_summarize_articles"
@@ -51,7 +52,7 @@ enum class AiSummaryMode(val storedValue: String) {
     }
 }
 
-enum class AiSummaryTextSetting { API_KEY, SYSTEM_PROMPT }
+enum class AiSummaryTextSetting { API_KEY, SYSTEM_PROMPT, DISCUSSION_SYSTEM_PROMPT }
 
 data class AiSummarySettingsSnapshot(
     val explicitlyEnabled: Boolean?,
@@ -60,6 +61,7 @@ data class AiSummarySettingsSnapshot(
     val apiKey: String,
     val model: String,
     val systemPrompt: String,
+    val discussionSystemPrompt: String,
     val streamResponses: Boolean,
     val autoSummarizeArticles: Boolean,
     val geminiNanoSummaryMode: GeminiNanoSummaryMode,
@@ -121,6 +123,8 @@ class AiSummarySettingsRepository(
             AiSummaryPreferenceKeys.SYSTEM_PROMPT,
             CloudSummaryDefaults.SYSTEM_PROMPT,
         ) ?: CloudSummaryDefaults.SYSTEM_PROMPT,
+        discussionSystemPrompt = store.getString(AiSummaryPreferenceKeys.DISCUSSION_SYSTEM_PROMPT)
+            ?.takeIf(String::isNotBlank) ?: CloudSummaryDefaults.DISCUSSION_SYSTEM_PROMPT,
         streamResponses = store.getBoolean(AiSummaryPreferenceKeys.STREAM_RESPONSES, true),
         autoSummarizeArticles = store.getBoolean(
             AiSummaryPreferenceKeys.AUTO_SUMMARIZE_ARTICLES,
@@ -211,6 +215,7 @@ class AiSummarySettingsRepository(
 
     suspend fun text(setting: AiSummaryTextSetting): String = when (setting) {
         AiSummaryTextSetting.API_KEY -> ensureApiKeyLoaded()
+        AiSummaryTextSetting.DISCUSSION_SYSTEM_PROMPT -> snapshot().discussionSystemPrompt
         AiSummaryTextSetting.SYSTEM_PROMPT -> snapshot().systemPrompt
     }
 
@@ -221,6 +226,10 @@ class AiSummarySettingsRepository(
                     if (saved) apiKeyState.value = value
                 }
             }
+        }
+        AiSummaryTextSetting.DISCUSSION_SYSTEM_PROMPT -> {
+            store.putString(AiSummaryPreferenceKeys.DISCUSSION_SYSTEM_PROMPT, value.takeIf(String::isNotBlank))
+            true
         }
         AiSummaryTextSetting.SYSTEM_PROMPT -> {
             store.putString(AiSummaryPreferenceKeys.SYSTEM_PROMPT, value)

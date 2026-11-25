@@ -258,8 +258,9 @@ internal fun settingsSearchCatalog(
     if (availability.localAi) group(SettingsSection.AiSummary, "Large language model",
         "Downloadable models" to "install download gemma qwen llama phi local offline storage")
     if (!availability.geminiNano) group(SettingsSection.AiSummary, "Summarization",
-        "System prompt" to "instructions ai assistant behavior customise customize")
+        "Article summary system prompt" to "instructions ai assistant behavior customise customize")
     group(SettingsSection.AiSummary, "Summarization",
+        "Discussion summary system prompt" to "instructions comments thread summarize customise customize",
         "Stream responses" to "streaming tokens live incremental",
         "Automatically summarize articles" to "auto summary summarise reading",
         "Enable bold formatting" to "markdown emphasis text",

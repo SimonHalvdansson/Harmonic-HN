@@ -180,6 +180,7 @@ fun AiSummarySettingsRoute(
             apiKeyPreview = persistedSettings.apiKeyPreview,
             model = persistedSettings.model,
             systemPrompt = persistedSettings.systemPrompt,
+            discussionSystemPrompt = persistedSettings.discussionSystemPrompt,
             streamResponses = persistedSettings.streamResponses,
             autoSummarizeArticles = persistedSettings.autoSummarizeArticles,
             enableBoldFormatting = persistedSettings.enableBoldFormatting,
@@ -218,7 +219,7 @@ fun AiSummarySettingsRoute(
         onArticleCategoriesRequested = onArticleCategoriesRequested,
     )
     dialog?.takeIf {
-        repository.cloudAiSupported || it == AiSummarySettingsDialog.SystemPrompt
+        repository.cloudAiSupported || it == AiSummarySettingsDialog.SystemPrompt || it == AiSummarySettingsDialog.DiscussionPrompt
     }?.let { activeDialog ->
         val dismiss = { dialog = null }
         when (activeDialog) {
@@ -238,11 +239,14 @@ fun AiSummarySettingsRoute(
                 onSaved = onTextSettingSaved,
             )
             AiSummarySettingsDialog.Model -> AiModelSelectorRoute(onDismiss = dismiss)
-            AiSummarySettingsDialog.SystemPrompt -> AiSummaryTextDialog(
-                setting = AiSummaryTextSetting.SYSTEM_PROMPT,
-                title = "System prompt",
+            AiSummarySettingsDialog.SystemPrompt, AiSummarySettingsDialog.DiscussionPrompt -> AiSummaryTextDialog(
+                setting = if (activeDialog == AiSummarySettingsDialog.DiscussionPrompt) AiSummaryTextSetting.DISCUSSION_SYSTEM_PROMPT
+                    else AiSummaryTextSetting.SYSTEM_PROMPT,
+                title = if (activeDialog == AiSummarySettingsDialog.DiscussionPrompt) "Discussion summary system prompt"
+                    else "Article summary system prompt",
                 hint = "System prompt",
-                defaultValue = CloudSummaryDefaults.SYSTEM_PROMPT,
+                defaultValue = if (activeDialog == AiSummarySettingsDialog.DiscussionPrompt) CloudSummaryDefaults.DISCUSSION_SYSTEM_PROMPT
+                    else CloudSummaryDefaults.SYSTEM_PROMPT,
                 minLines = 5,
                 maxLines = 10,
                 textSizeSp = 15,

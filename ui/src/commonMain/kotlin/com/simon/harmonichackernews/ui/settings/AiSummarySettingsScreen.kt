@@ -15,7 +15,7 @@ import com.simon.harmonichackernews.resources.*
 import com.simon.harmonichackernews.settings.AiSummaryMode
 import com.simon.harmonichackernews.settings.GeminiNanoSummaryMode
 
-enum class AiSummarySettingsDialog { BaseUrl, ApiKey, Model, SystemPrompt }
+enum class AiSummarySettingsDialog { BaseUrl, ApiKey, Model, SystemPrompt, DiscussionPrompt }
 
 data class AiSummarySettingsUiState(
     val enabled: Boolean,
@@ -26,6 +26,7 @@ data class AiSummarySettingsUiState(
     val apiKeyPreview: String,
     val model: String,
     val systemPrompt: String,
+    val discussionSystemPrompt: String,
     val streamResponses: Boolean,
     val autoSummarizeArticles: Boolean,
     val enableBoldFormatting: Boolean,
@@ -161,7 +162,7 @@ fun AiSummarySettingsScreen(
                         state.geminiNanoSummaryMode == GeminiNanoSummaryMode.THREE_BULLETS
                     )
                 SettingRow(
-                    title = "System prompt",
+                    title = "Article summary system prompt",
                     summary = state.systemPrompt,
                     icon = Res.drawable.ic_subject,
                     summaryFontSizeSp = 13f,
@@ -169,6 +170,16 @@ fun AiSummarySettingsScreen(
                     summaryMaxLines = 10,
                     enabled = systemPromptEnabled,
                     onClick = { onDialogRequested(AiSummarySettingsDialog.SystemPrompt) },
+                )
+                SettingsDivider()
+                SettingRow(
+                    title = "Discussion summary system prompt",
+                    summary = state.discussionSystemPrompt,
+                    icon = Res.drawable.ic_subject,
+                    summaryFontSizeSp = 13f,
+                    summaryLineHeightSp = 17f,
+                    summaryMaxLines = 3,
+                    onClick = { onDialogRequested(AiSummarySettingsDialog.DiscussionPrompt) },
                 )
                 SettingsDivider()
                 SwitchSettingRow(
