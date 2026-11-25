@@ -1,8 +1,6 @@
 package com.simon.harmonichackernews.summary
 
-import kotlinx.io.buffered
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.Source
 import kotlinx.io.readByteArray
 import kotlinx.serialization.Serializable
 
@@ -23,11 +21,9 @@ data class ExternalModelFile(
     companion object {
         const val ID = "external-litert-lm"
 
-        fun inspect(location: String, name: String, path: Path, sizeBytes: Long): ExternalModelFile {
+        fun inspect(location: String, name: String, sizeBytes: Long, source: Source): ExternalModelFile {
             require(name.endsWith(".litertlm", ignoreCase = true)) { "Choose a .litertlm model file." }
-            val valid = sizeBytes > 8 && SystemFileSystem.source(path).buffered().use {
-                it.readByteArray(8).decodeToString() == "LITERTLM"
-            }
+            val valid = sizeBytes > 8 && source.request(8) && source.readByteArray(8).decodeToString() == "LITERTLM"
             require(valid) { "This file does not contain a LiteRT-LM model." }
             return ExternalModelFile(location, name, sizeBytes)
         }

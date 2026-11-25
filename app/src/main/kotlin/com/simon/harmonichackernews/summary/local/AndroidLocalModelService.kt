@@ -61,7 +61,7 @@ internal fun createAndroidLocalModelService(
  * than StorageManager.getAllocatableBytes().
  */
 @SuppressLint("UsableSpace")
-private fun immediatelyUsableSpaceBytes(directory: File): Long = directory.usableSpace
+internal fun immediatelyUsableSpaceBytes(directory: File): Long = directory.usableSpace
 
 internal fun androidLocalModelsRoot(context: Context): File {
     val base = context.getExternalFilesDir(null) ?: context.filesDir
