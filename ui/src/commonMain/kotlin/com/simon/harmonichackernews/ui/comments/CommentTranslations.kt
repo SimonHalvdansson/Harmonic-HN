@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -123,6 +124,7 @@ internal fun TranslateVisibleComments(
     collapseParent: Boolean,
 ) {
     val service = LocalCommentTranslation.current ?: return
+    val nextSibling = remember(rows) { nextVisibleSiblings(rows) }
     LaunchedEffect(translations, list, rows, language, service, collapseParent) {
         // Keep working on the same comment while it has priority. A scroll past it cancels
         // the wait, including when a different language model is still downloading.
@@ -133,7 +135,15 @@ internal fun TranslateVisibleComments(
             val last = (visible.last().index - 1).coerceAtMost(rows.lastIndex)
             val ahead = if (list.lastScrolledBackward) first - 1 downTo maxOf(0, first - 3)
                 else last + 1..minOf(rows.lastIndex, last + 3)
-            ((first..last).asSequence() + ahead.asSequence()).mapNotNull { index ->
+            val viewport = sequence {
+                for (index in first..last) {
+                    yield(index)
+                    // Collapsing this branch brings its next sibling directly into view.
+                    val sibling = nextSibling[index]
+                    if (sibling > index + 1) yield(sibling)
+                }
+            }
+            (viewport + ahead.asSequence()).mapNotNull { index ->
                 rows.getOrNull(index)?.comment?.takeIf { it.expanded || !collapseParent }?.translationKey(language)
             }.firstOrNull { key ->
                 val state = translations[key]
@@ -144,6 +154,15 @@ internal fun TranslateVisibleComments(
             if (key != null && translations[key] == null) translations.toggle(key, service)
         }
     }
+}
+
+internal fun nextVisibleSiblings(rows: List<PortableVisibleComment>): IntArray {
+    val nextByParent = mutableMapOf<Int, Int>()
+    val siblings = IntArray(rows.size) { -1 }
+    for (index in rows.indices.reversed()) {
+        siblings[index] = nextByParent.put(rows[index].comment.parent, index) ?: -1
+    }
+    return siblings
 }
 
 @Composable
@@ -160,6 +179,8 @@ internal fun TranslationButton(key: TranslationKey, translations: CommentTransla
     HarmonicTooltip(label) {
         IconButton(
             onClick = { scope.launch { translations.toggle(key, service) } },
+            colors = if (inDialog) IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                else IconButtonDefaults.iconButtonColors(),
             enabled = state?.loading != true && (state?.notice == null || state.retry),
             modifier = if (inDialog) Modifier.size(48.dp) else Modifier.size(width = 32.dp, height = 22.dp),
         ) {
