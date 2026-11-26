@@ -89,6 +89,7 @@ interface ClipboardService {
 interface ConnectivityService {
     fun isOnline(): Boolean
     fun isUnmetered(): Boolean
+    fun isOnMobileData(): Boolean = false
 
     /** Hosts with network callbacks also emit subsequent connectivity changes. */
     val onlineChanges: Flow<Boolean> get() = flow { emit(isOnline()) }

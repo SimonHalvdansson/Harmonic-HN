@@ -73,10 +73,11 @@ private extension XCUIElement {
 }
 
 final class IosLiteRtSettingsUITests: XCTestCase {
-    func testLocalPickerOffersLiteRtModelsWithoutRetiredBonsaiModels() {
+    private func openModelPicker(onCellular: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchEnvironment["HARMONIC_UI_TESTING"] = "1"
+        if onCellular { app.launchEnvironment["HARMONIC_TEST_CELLULAR"] = "1" }
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         app.completeWelcomeIfNeeded()
@@ -90,11 +91,18 @@ final class IosLiteRtSettingsUITests: XCTestCase {
         for _ in 0..<4 where !ai.isHittable { app.swipeUp(velocity: .slow) }
         XCTAssertTrue(ai.waitForExistence(timeout: 10))
         ai.tapCenter()
+        XCTAssertTrue(app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "Apple Intelligence")
+        ).firstMatch.waitForExistence(timeout: 10))
+        app.tapVisibleButton("Downloadable models")
+        return app
+    }
+
+    func testLocalPickerOffersLiteRtModelsWithoutRetiredBonsaiModels() {
+        let app = openModelPicker()
         func labelContaining(_ text: String) -> XCUIElement {
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
         }
-        XCTAssertTrue(labelContaining("Apple Intelligence").waitForExistence(timeout: 10))
-        app.tapVisibleButton("Downloadable models")
         XCTAssertTrue(labelContaining("Gemma 4 E2B").waitForExistence(timeout: 10))
         XCTAssertTrue(labelContaining("Gemma 4 E4B").exists)
         XCTAssertFalse(labelContaining("Bonsai 1.7B").exists)
@@ -103,6 +111,21 @@ final class IosLiteRtSettingsUITests: XCTestCase {
         screenshot.name = "iOS LiteRT model picker"
         screenshot.lifetime = .keepAlways
         add(screenshot)
+    }
+
+    func testCellularModelDownloadCanBeCancelledBeforeTransfer() {
+        let app = openModelPicker(onCellular: true)
+        let action = "Download Gemma 4 E2B"
+        app.tapVisibleButton(action)
+        let title = app.descendants(matching: .any)["Download using mobile data?"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "Gemma 4 E2B model is 2.59 GB")
+        ).firstMatch.exists)
+        XCTAssertTrue(app.labeledButton("Download").isHittable)
+        app.labeledButton("Cancel").tapCenter()
+        XCTAssertTrue(title.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.labeledButton(action).isHittable)
     }
 }
 

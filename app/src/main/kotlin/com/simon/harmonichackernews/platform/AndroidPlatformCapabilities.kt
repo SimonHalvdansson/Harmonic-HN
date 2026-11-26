@@ -132,6 +132,8 @@ class AndroidConnectivityService(context: Context) : ConnectivityService {
         if (callbackRegistered) connectivityStatus.unmetered
         else AndroidNetworkStatus.isUnmetered(appContext)
 
+    override fun isOnMobileData(): Boolean = AndroidNetworkStatus.isOnMobileData(appContext)
+
     private fun updateCapabilities(capabilities: NetworkCapabilities) {
         connectivityStatus = AndroidConnectivityCapabilities.evaluate(capabilities)
         mutableOnline.value = connectivityStatus.online

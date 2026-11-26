@@ -118,6 +118,7 @@ private fun IosAiSettings(
                     nanoAvailable = availabilityState.nanoAvailable,
                     nanoBaseModelName = availabilityState.nanoBaseModelName,
                     managedModelStatus = availabilityState.statusMessage,
+                    isOnMobileData = app.platform.connectivity::isOnMobileData,
                     onChanged = { refresh++ },
                     onMessage = { scene.userMessages.show(it, UserMessageDuration.LONG) },
                 )

@@ -237,6 +237,16 @@ private final class IosConnectivityService: ConnectivityService {
         defer { lock.unlock() }
         return unmetered
     }
+
+    func isOnMobileData() -> Bool {
+#if DEBUG && targetEnvironment(simulator)
+        if harmonicIsUiTesting, ProcessInfo.processInfo.environment["HARMONIC_TEST_CELLULAR"] == "1" {
+            return true
+        }
+#endif
+        let path = monitor.currentPath
+        return path.status == .satisfied && path.usesInterfaceType(.cellular)
+    }
 }
 
 private final class IosTimeFormatter: PlatformTimeFormatter {
