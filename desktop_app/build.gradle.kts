@@ -218,10 +218,11 @@ compose.desktop {
         fromFiles(desktopProjectJars, configurations.named("desktopRuntimeClasspath"))
         providers.gradleProperty("harmonicDesktopJavaHome").orNull?.let { javaHome = it }
         buildTypes.release.aot {
-            mode = if (providers.gradleProperty("harmonicDesktopAppCds")
-                    // Windows ARM64 JDK 21 archives retain build-directory JAR paths.
-                    // Keep installed apps independent of the build machine.
-                    .map(String::toBoolean).getOrElse(!isWindowsArm64DesktopBuild)) {
+            // The macOS launcher fails during JBR window initialization with the prebuilt
+            // archive. Windows ARM64 JDK 21 archives retain build-directory JAR paths.
+            val appCdsEnabled = providers.gradleProperty("harmonicDesktopAppCds")
+                .map(String::toBoolean).getOrElse(!isMacDesktopBuild && !isWindowsArm64DesktopBuild)
+            mode = if (appCdsEnabled) {
                 AotMode.AppCdsPrebuild
             } else {
                 AotMode.None

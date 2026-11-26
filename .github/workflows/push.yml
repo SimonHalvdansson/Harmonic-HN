@@ -249,8 +249,11 @@ jobs:
             ./gradlew :desktop_app:${{ matrix.task }} --warning-mode all --no-daemon --max-workers=2
           fi
       - name: Verify desktop AppCDS archive
-        if: matrix.os != 'windows-11-arm'
+        if: runner.os != 'macOS' && matrix.os != 'windows-11-arm'
         run: python .github/scripts/verify-desktop-appcds.py desktop_app/build/compose/binaries/main-release/app
+      - name: Verify macOS DMG launch
+        if: runner.os == 'macOS'
+        run: python3 .github/scripts/verify_macos_dmg.py desktop_app/build/compose/binaries/main-release/dmg/*.dmg
       - name: Verify processed desktop runtime
         run: >-
           java -Xverify:all "-Djava.awt.headless=true"

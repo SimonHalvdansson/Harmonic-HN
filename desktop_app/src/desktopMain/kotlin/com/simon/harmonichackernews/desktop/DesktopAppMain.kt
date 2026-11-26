@@ -147,13 +147,6 @@ fun main() {
     val sceneOwner = HarmonicSceneOwner(bootstrap.app)
     try {
         desktopApplication {
-            if (trainingRun) {
-                LaunchedEffect(Unit) {
-                    // Exercise real Compose layouts and fonts, then let the JVM write its archive.
-                    delay(5_000L)
-                    exitApplication()
-                }
-            }
             val windowIcon = remember(desktopAppIcon) { desktopAppIcon?.toPainter() }
             val navigation by sceneOwner.scene.navigation.state.collectAsState()
             var storiesController by remember { mutableStateOf<StoriesScreenController?>(null) }
@@ -185,6 +178,15 @@ fun main() {
                     }
                 },
             ) {
+                if (trainingRun) {
+                    LaunchedEffect(Unit) {
+                        // Let the real layouts and fonts render before ending packaging checks.
+                        delay(5_000L)
+                        check(window.isShowing) { "Harmonic's main window did not open" }
+                        println("Harmonic main window opened")
+                        exitApplication()
+                    }
+                }
                 CompositionLocalProvider(LocalViewModelStoreOwner provides sceneOwner) {
                     // Use the same dispatcher as Compose dialogs so the topmost modal handles
                     // Escape before screen navigation. Window.onKeyEvent bypasses that ordering.
