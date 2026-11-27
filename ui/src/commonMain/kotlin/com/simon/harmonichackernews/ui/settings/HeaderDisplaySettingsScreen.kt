@@ -707,17 +707,17 @@ private fun HeaderDisplayPreviewContent(
             PlatformDisableDialogWindowAnimations()
             PlatformDialogBackgroundDimAmount(0f)
             TransformOverlay(
-                contentKey = bounds, sourceBounds = bounds, dismissRequestVersion = imageDismissRequest,
+                contentKey = bounds, sourceBounds = imageBounds, dismissRequestVersion = imageDismissRequest,
                 predictiveBackProgress = 0f, predictiveBackEdge = 0,
-                maxWidth = 640.dp, horizontalPadding = 24.dp, verticalPadding = 24.dp,
+                maxWidth = Dp.Infinity, horizontalPadding = 0.dp, verticalPadding = 24.dp,
+                preserveContentAspectRatio = true, scaleContentWithContainer = true,
                 targetCornerRadius = 8.dp, sourceCornerRadius = 8.dp,
                 containerColor = Color.Transparent, shadowElevation = 0.dp,
                 consumeAllGestures = false, verticalSwipeDismissEnabled = true,
                 onDismissRequest = dismiss, onDismissAnimationFinished = { inspectedImage = null },
             ) {
                 val ratio = image.intrinsicSize.width / image.intrinsicSize.height
-                ZoomableImageViewport(ratio, dismiss,
-                    Modifier.fillMaxWidth()) { modifier ->
+                ZoomableImageViewport(ratio, dismiss, restingMaxWidth = 640.dp, restingPadding = 24.dp) { modifier ->
                     Image(image, "Inspect story image", modifier, contentScale = ContentScale.Fit)
                 }
             }

@@ -13,8 +13,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +33,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalDensity
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -47,6 +47,8 @@ import kotlin.math.abs
 @Composable
 internal fun ZoomablePreviewImage(
     state: CommentLinkPreviewOverlayState.Image,
+    restingMaxWidth: Dp,
+    restingPadding: Dp,
     onDismissRequest: () -> Unit,
 ) {
     val context = LocalPlatformContext.current
@@ -59,7 +61,8 @@ internal fun ZoomablePreviewImage(
     ZoomableImageViewport(
         aspectRatio = ratio,
         onDismissRequest = onDismissRequest,
-        modifier = Modifier.fillMaxWidth(),
+        restingMaxWidth = restingMaxWidth,
+        restingPadding = restingPadding,
     ) { imageModifier ->
         AsyncImage(
             model = model,
@@ -79,6 +82,8 @@ internal fun ZoomablePreviewImage(
 internal fun ZoomableImageViewport(
     aspectRatio: Float,
     onDismissRequest: () -> Unit,
+    restingMaxWidth: Dp,
+    restingPadding: Dp,
     modifier: Modifier = Modifier,
     content: @Composable (Modifier) -> Unit,
 ) {
@@ -89,9 +94,12 @@ internal fun ZoomableImageViewport(
 
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val density = LocalDensity.current
-        val geometry = remember(constraints, aspectRatio) {
+        val geometry = remember(constraints, aspectRatio, density, restingMaxWidth, restingPadding) {
             PreviewImageGeometry(
                 Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat()), aspectRatio,
+                restingWidth = with(density) {
+                    (maxWidth - restingPadding * 2).coerceAtMost(restingMaxWidth).toPx().coerceAtLeast(0f)
+                },
             )
         }
         val image = geometry.image
@@ -99,8 +107,9 @@ internal fun ZoomableImageViewport(
             motion?.cancel()
             transform = transform.bounded(geometry.viewport(transform.scale), image)
         }
+        val viewport = geometry.viewport(transform.scale)
         Box(
-            Modifier.fillMaxWidth().height(with(density) { geometry.viewport(transform.scale).height.toDp() })
+            Modifier.size(with(density) { viewport.width.toDp() }, with(density) { viewport.height.toDp() })
                 .clipToBounds()
                 .pointerInput(geometry) {
                     detectTapGestures(

@@ -61,6 +61,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -109,7 +110,8 @@ fun CommentLinkPreviewOverlay(
     onScrimAlphaChanged: (Float) -> Unit = {},
 ) {
     val state = controller.linkPreviewOverlay ?: return
-    val predictiveProgressAnimation = remember(state) { Animatable(0f) }
+    val overlayKey = (state as? CommentLinkPreviewOverlayState.Image)?.imageUrl ?: state
+    val predictiveProgressAnimation = remember(overlayKey) { Animatable(0f) }
     val settleRequest = controller.linkPreviewPredictiveBackSettleRequest
 
     LaunchedEffect(controller.linkPreviewPredictiveBackProgress, settleRequest) {
@@ -141,18 +143,17 @@ fun CommentLinkPreviewOverlay(
     } else {
         MaterialTheme.colorScheme.surfaceContainerHigh
     }
+    val dialogWidth = if (tablet) HarmonicDimens.compose_comment_action_tablet_max_width
+        else HarmonicDimens.compose_comment_action_max_width
+    val dialogPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal
     TransformOverlay(
-        contentKey = state,
+        contentKey = overlayKey,
         sourceBounds = state.sourceBounds,
         dismissRequestVersion = controller.linkPreviewDismissRequest,
         predictiveBackProgress = predictiveProgressAnimation.value,
         predictiveBackEdge = controller.linkPreviewPredictiveBackEdge,
-        maxWidth = if (tablet) {
-            HarmonicDimens.compose_comment_action_tablet_max_width
-        } else {
-            HarmonicDimens.compose_comment_action_max_width
-        },
-        horizontalPadding = HarmonicDimens.compose_comment_action_screen_padding_horizontal,
+        maxWidth = if (imageOnly) Dp.Infinity else dialogWidth,
+        horizontalPadding = if (imageOnly) 0.dp else dialogPadding,
         verticalPadding = HarmonicDimens.compose_comment_action_screen_padding_vertical,
         targetCornerRadius = 28.dp,
         sourceCornerRadius = when {
@@ -192,6 +193,7 @@ fun CommentLinkPreviewOverlay(
             is CommentLinkPreviewOverlayState.Reference -> referenceContent(state)
             is CommentLinkPreviewOverlayState.Image -> ZoomablePreviewImage(
                 state = state,
+                restingMaxWidth = dialogWidth, restingPadding = dialogPadding,
                 onDismissRequest = controller::requestDismissLinkPreview,
             )
         }

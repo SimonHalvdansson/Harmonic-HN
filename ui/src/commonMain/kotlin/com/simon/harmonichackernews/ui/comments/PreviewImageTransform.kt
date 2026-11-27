@@ -7,13 +7,17 @@ import kotlin.math.min
 
 internal const val PreviewImageMaxZoom = 5f
 
-/** Keep the fitted image fixed while zoom reveals more of it vertically, up to the safe area. */
-internal data class PreviewImageGeometry(val available: Size, val aspectRatio: Float) {
-    val baseViewport = Size(available.width, min(available.width / aspectRatio, available.height))
+/** Keep the fitted image fixed while zoom reveals more of it, up to the safe area. */
+internal data class PreviewImageGeometry(
+    val available: Size,
+    val aspectRatio: Float,
+    val restingWidth: Float = available.width,
+) {
+    val baseViewport = Size(restingWidth, min(restingWidth / aspectRatio, available.height))
     val image = fittedPreviewImageSize(baseViewport, aspectRatio)
 
     fun viewport(scale: Float): Size = Size(
-        baseViewport.width,
+        (image.width * scale.coerceIn(1f, PreviewImageMaxZoom)).coerceIn(baseViewport.width, available.width),
         (image.height * scale.coerceIn(1f, PreviewImageMaxZoom))
             .coerceIn(baseViewport.height, available.height),
     )

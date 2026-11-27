@@ -847,6 +847,10 @@ class CommentsScreenController private constructor(
         listener.onLinkPreviewOverlayVisibilityChanged(true)
     }
 
+    fun updateImagePreviewBounds(bounds: Rect) {
+        if (isLinkPreviewImageShowing()) linkPreviewSourceBounds = bounds
+    }
+
     fun isLinkPreviewOverlayShowing(): Boolean = linkPreview != null
 
     fun isLinkPreviewReferenceShowing(): Boolean =

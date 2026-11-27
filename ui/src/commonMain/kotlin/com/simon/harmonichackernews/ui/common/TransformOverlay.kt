@@ -117,7 +117,13 @@ fun TransformOverlay(
     var verticalSwipeSettleTarget by remember(contentKey) { mutableStateOf<Float?>(null) }
     var rootCoordinates by remember(contentKey) { mutableStateOf<LayoutCoordinates?>(null) }
     var rootSize by remember(contentKey) { mutableStateOf(IntSize.Zero) }
-    var sourceBoundsInOverlay by remember(contentKey, sourceBounds) { mutableStateOf<Rect?>(null) }
+    var sourceBoundsInOverlay by remember(contentKey) { mutableStateOf<Rect?>(null) }
+    LaunchedEffect(rootCoordinates, sourceBounds) {
+        val root = rootCoordinates?.takeIf { it.isAttached } ?: return@LaunchedEffect
+        sourceBoundsInOverlay = sourceBounds?.let {
+            Rect(root.windowToLocal(it.topLeft), root.windowToLocal(it.bottomRight))
+        }
+    }
     var targetBounds by remember(contentKey) { mutableStateOf<Rect?>(null) }
     var dismissalFinished by remember(contentKey) { mutableStateOf(false) }
     var sourceHandoffComplete by remember(contentKey) { mutableStateOf(false) }
@@ -399,8 +405,8 @@ fun TransformOverlay(
             .onGloballyPositioned { coordinates ->
                 rootCoordinates = coordinates
                 rootSize = coordinates.size
-                // The source is a window-space snapshot taken when the preview opens. Capture
-                // it locally once so a retained screen's navigation transform moves it with us.
+                // Resolve the opening position on the first layout. Later thumbnail relayouts
+                // supply new window bounds through the sourceBounds effect.
                 if (sourceBoundsInOverlay == null && sourceBounds != null) {
                     sourceBoundsInOverlay = Rect(
                         coordinates.windowToLocal(sourceBounds.topLeft),
@@ -497,7 +503,7 @@ fun TransformOverlay(
                 Box(
                     modifier = Modifier
                         .widthIn(max = maxWidth)
-                        .fillMaxWidth()
+                        .then(if (preserveContentAspectRatio) Modifier else Modifier.fillMaxWidth())
                         .onGloballyPositioned { coordinates ->
                             // Window bounds include ancestor scale and clipping. Applying those
                             // bounds inside the same transformed screen moves the card twice.

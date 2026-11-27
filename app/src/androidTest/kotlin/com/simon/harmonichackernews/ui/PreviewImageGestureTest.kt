@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -37,16 +38,19 @@ class PreviewImageGestureTest {
     private fun showImage(aspectRatio: Float = 1.5f, maxHeight: Dp = 520.dp) {
         compose.setContent {
             Box(Modifier.fillMaxSize().testTag("root")) {
+                Box(Modifier.matchParentSize().safeDrawingPadding().testTag("safeArea"))
                 TransformOverlay(
                     contentKey = "image", sourceBounds = null,
                     dismissRequestVersion = 0, predictiveBackProgress = 0f, predictiveBackEdge = 0,
-                    maxWidth = 320.dp, horizontalPadding = 24.dp, verticalPadding = 24.dp,
+                    maxWidth = Dp.Infinity, horizontalPadding = 0.dp, verticalPadding = 24.dp,
                     targetCornerRadius = 0.dp, containerColor = Color.Transparent,
                     consumeAllGestures = false, verticalSwipeDismissEnabled = true,
+                    preserveContentAspectRatio = true, scaleContentWithContainer = true,
                     onDismissRequest = { dismissals.intValue++ }, onDismissAnimationFinished = {},
                 ) {
                     ZoomableImageViewport(
                         aspectRatio = aspectRatio,
+                        restingMaxWidth = 320.dp, restingPadding = 24.dp,
                         onDismissRequest = { dismissals.intValue++ },
                         modifier = Modifier.heightIn(max = maxHeight).testTag("viewport"),
                     ) { modifier ->
@@ -76,10 +80,16 @@ class PreviewImageGestureTest {
         val zoomed = imageBounds()
         assertEquals(before.width * 3f, zoomed.width, 1f)
         val zoomedViewport = viewportBounds()
-        assertTrue("Dialog should grow substantially", zoomedViewport.height > beforeViewport.height * 2f)
+        val safeArea = compose.onNodeWithTag("safeArea").fetchSemanticsNode().boundsInRoot
+        val availableHeight = with(compose.density) { minOf(520.dp.toPx(), safeArea.height - 2 * 24.dp.roundToPx()) }
+        assertEquals(minOf(availableHeight, zoomed.height), zoomedViewport.height, 2f)
         assertEquals(beforeViewport.center.y, zoomedViewport.center.y, 1f)
-        assertEquals(beforeViewport.width, zoomedViewport.width, 1f)
-        assertTrue(zoomed.center.x < before.center.x)
+        assertEquals(minOf(safeArea.width, zoomed.width), zoomedViewport.width, 1f)
+        if (zoomed.width > safeArea.width + 1f) {
+            assertTrue(zoomed.center.x < before.center.x)
+        } else {
+            assertEquals(before.center.x, zoomed.center.x, 1f)
+        }
         compose.onNodeWithTag("viewport", useUnmergedTree = true).performTouchInput { doubleClick(center) }
         compose.waitForIdle()
         assertEquals(before, imageBounds())

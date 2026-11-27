@@ -19,6 +19,13 @@ class PreviewImageTransformTest {
         assertEquals(Size(400f, 200f), geometry.image, "Growing the viewport must not refit the image")
     }
 
+    @Test fun zoomExpandsPastDialogMarginsBeforeHorizontalPanningStarts() {
+        val geometry = PreviewImageGeometry(Size(400f, 800f), aspectRatio = 2f, restingWidth = 320f)
+        assertEquals(Size(320f, 160f), geometry.viewport(1f))
+        assertEquals(Size(360f, 180f), geometry.viewport(1.125f))
+        assertEquals(Size(400f, 320f), geometry.viewport(2f))
+    }
+
     @Test fun portraitRemainsWithinTheSafeAreaAndPanoramaUsesOnlyTheHeightItNeeds() {
         val portrait = PreviewImageGeometry(Size(400f, 800f), 0.25f)
         assertEquals(Size(400f, 800f), portrait.viewport(1f))

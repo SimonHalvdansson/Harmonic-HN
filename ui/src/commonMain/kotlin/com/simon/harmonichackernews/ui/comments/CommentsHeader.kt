@@ -81,6 +81,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import dev.chrisbanes.haze.hazeSource
@@ -437,6 +439,11 @@ fun CommentsHeader(
                                                                 rememberSharedContentState("image"), visibility,
                                                                 boundsTransform = boundsTransform,
                                                             ).fillMaxSize()
+                                                                .onGloballyPositioned {
+                                                                    if (controller.isLinkPreviewImageShowing()) {
+                                                                        controller.updateImagePreviewBounds(it.boundsInWindow())
+                                                                    }
+                                                                }
                                                                 .clip(RoundedCornerShape(8.dp)).hazeSource(imageHazeState),
                                                             background,
                                                         ) { loadedTint = it }
