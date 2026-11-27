@@ -70,6 +70,7 @@ data class UserInfoUi(
 sealed interface UserDialogUiState {
     data object Loading : UserDialogUiState
     data class Loaded(val user: UserInfoUi) : UserDialogUiState
+    data object Offline : UserDialogUiState
     data object Error : UserDialogUiState
 }
 
@@ -183,7 +184,8 @@ internal fun UserProfileDialogContent(
             ) { current ->
                 when (current) {
                     UserDialogUiState.Loading -> UserLoadingPlaceholder()
-                    UserDialogUiState.Error -> UserLoadError(onRetry)
+                    UserDialogUiState.Offline, UserDialogUiState.Error ->
+                        UserLoadError(offline = current == UserDialogUiState.Offline, onRetry = onRetry)
                     is UserDialogUiState.Loaded -> UserLoadedContent(
                         user = current.user,
                         tag = tag,
@@ -234,22 +236,28 @@ private fun UserLoadingPlaceholder() {
 }
 
 @Composable
-private fun UserLoadError(onRetry: () -> Unit) {
+private fun UserLoadError(offline: Boolean, onRetry: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 24.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Icon(
+            painterResource(if (offline) Res.drawable.ic_cloud_off else Res.drawable.ic_account_circle),
+            contentDescription = null,
+            modifier = Modifier.padding(bottom = 8.dp).size(32.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
-            text = "Loading failed",
+            text = if (offline) "No internet connection" else "Couldn’t load this profile",
             modifier = Modifier.padding(bottom = 6.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = AppUiFontFamily,
             fontSize = 16.sp,
         )
         Text(
-            text = "Check the capitalization. Hacker News usernames are case-sensitive.",
+            text = if (offline) "Reconnect to load this profile." else "Try again in a moment.",
             modifier = Modifier.padding(bottom = 10.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontFamily = AppUiFontFamily,

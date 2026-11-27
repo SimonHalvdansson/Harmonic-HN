@@ -161,7 +161,8 @@ fun UserProfileDialog(
 
     val state = when (val loadState = runtimeState.loadState) {
         UserProfileLoadState.Loading -> UserDialogUiState.Loading
-        UserProfileLoadState.Error -> UserDialogUiState.Error
+        UserProfileLoadState.Error -> if (scene.app.platform.connectivity.isOnline()) UserDialogUiState.Error
+            else UserDialogUiState.Offline
         is UserProfileLoadState.Loaded -> UserDialogUiState.Loaded(
             UserInfoUi(
                 id = loadState.profile.id,
