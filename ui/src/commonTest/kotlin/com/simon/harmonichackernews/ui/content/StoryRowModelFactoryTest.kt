@@ -84,6 +84,7 @@ class StoryRowModelFactoryTest {
         val story = Story("Cached presentation", 7, true, false).apply {
             url = "https://network.example/should-not-be-used"
             createdAtEpochSeconds = 3_600
+            cachedAtMillis = 7_000_000L
         }
         val nowMillis = 7_200_000L
 
