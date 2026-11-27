@@ -152,6 +152,18 @@ class HarmonicThemeCatalogTest {
     }
 
     @Test
+    fun grayAccentsStayNearNeutralInEveryStyle() {
+        for (dark in listOf(false, true)) for (style in ColorSchemeStyle.entries) {
+            val scheme = HarmonicThemeCatalog.scheme("gray", dark, style).colorScheme
+            for (color in listOf(scheme.primary, scheme.primaryContainer, scheme.secondary,
+                    scheme.secondaryContainer, scheme.tertiary, scheme.tertiaryContainer, scheme.surfaceTint)) {
+                assertTrue(maxOf(color.red, color.green, color.blue) - minOf(color.red, color.green, color.blue) <= .05f,
+                    "Gray/$dark/$style accent has too much color: $color")
+            }
+        }
+    }
+
+    @Test
     fun hackerKeepsItsGreenTextInEveryStyle() {
         for (dark in listOf(false, true)) {
             val balanced = HarmonicThemeCatalog.scheme("hacker", dark).colorScheme

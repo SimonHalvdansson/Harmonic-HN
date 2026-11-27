@@ -18,13 +18,28 @@ object HarmonicThemeCatalog {
                 if (dark) black else white, preserveSurfaces = true)
             "hacker_news" -> hackerNewsScheme(dark, style)
             "hacker" -> hackerScheme(dark, style)
-            "gray" -> styledCurated("rose", dark, style, if (dark) gray else grayLight,
-                preserveSurfaces = true)
+            "gray" -> grayScheme(dark, style)
             in ColorSchemePreferences.generatedValues -> MaterialColorSchemes.generated(id, dark, style)
             // Defined fallback for Dynamic on platforms without Android system colors.
             else -> if (dark) MaterialColorSchemes.violetDark else MaterialColorSchemes.violetLight
         },
     )
+
+    private fun grayScheme(dark: Boolean, style: ColorSchemeStyle): ColorScheme {
+        val base = if (dark) gray else grayLight
+        val accent = when (style) {
+            ColorSchemeStyle.NeutralSurfaces -> if (dark) Color(0xFFC6C6C6) else Color(0xFF525252)
+            ColorSchemeStyle.Balanced -> if (dark) Color(0xFFCACBCD) else Color(0xFF4D4F52)
+            ColorSchemeStyle.Vibrant -> if (dark) Color(0xFFD0D3D7) else Color(0xFF484C52)
+        }
+        val container = when (style) {
+            ColorSchemeStyle.NeutralSurfaces -> if (dark) Color(0xFF424242) else Color(0xFFDBDBDB)
+            ColorSchemeStyle.Balanced -> if (dark) Color(0xFF3E4043) else Color(0xFFDEDFE1)
+            ColorSchemeStyle.Vibrant -> if (dark) Color(0xFF393D43) else Color(0xFFE2E5EA)
+        }
+        return base.copy(primary = accent, onPrimary = if (dark) Color.Black else Color.White,
+            primaryContainer = container, onPrimaryContainer = base.onSurface, surfaceTint = accent)
+    }
 
     private fun hackerScheme(dark: Boolean, style: ColorSchemeStyle): ColorScheme {
         val identity = if (dark) hacker else hackerLight
@@ -49,7 +64,7 @@ object HarmonicThemeCatalog {
             return monochrome.withSurfacesFrom(balanced)
         }
         val generated = MaterialColorSchemes.generated(base, dark, style)
-        // Pure keeps its white/black canvas; Gray keeps its neutral canvas. Their accent roles
+        // Pure keeps its white/black canvas. Its accent roles
         // still use each recipe, including the secondary and tertiary color families.
         return if (preserveSurfaces) generated.withSurfacesFrom(balanced) else generated
     }
@@ -124,7 +139,7 @@ object HarmonicThemeCatalog {
         )
     }
     private val gray: ColorScheme by lazy {
-        classicDark.copy(
+        MaterialColorSchemes.monochromeDark.copy(
             surface = Color(0xFF202124),
             surfaceDim = Color(0xFF202124),
             surfaceBright = Color(0xFF414246),
@@ -220,7 +235,7 @@ object HarmonicThemeCatalog {
         )
     }
     private val grayLight: ColorScheme by lazy {
-        MaterialColorSchemes.roseLight.copy(
+        MaterialColorSchemes.monochromeLight.copy(
             surface = Color(0xFFF7F7F9), surfaceDim = Color(0xFFD9D9DD),
             surfaceBright = Color(0xFFF7F7F9), surfaceContainerLowest = Color.White,
             surfaceContainerLow = Color(0xFFF1F1F4), surfaceContainer = Color(0xFFEBEBEF),
