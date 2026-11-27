@@ -27,7 +27,7 @@ import kotlin.math.sin
 private const val DialogPredictiveBackScale = 0.82f
 private const val DialogPredictiveBackAlpha = 0.08f
 private const val DialogPredictiveBackGestureProgressFraction = 0.42f
-private const val DialogPredictiveBackHeldDimFraction = 0.25f
+private const val DialogPredictiveBackHeldDimFraction = 0.625f
 private const val DialogPredictiveBackTranslationXDp = 32f
 private const val DialogPredictiveBackTranslationYDp = 10f
 private const val DialogPredictiveBackCommitDurationMillis = 90
@@ -53,7 +53,7 @@ internal fun dialogPredictiveBackVisuals(
     // until that phase is complete so fading can only begin after a committed gesture is released.
     val fadeProgress = ((visualProgress - DialogPredictiveBackGestureProgressFraction) /
         (1f - DialogPredictiveBackGestureProgressFraction)).coerceIn(0f, 1f)
-    // Keep a quarter of the scrim while the gesture is held so the still-open dialog remains
+    // Keep most of the scrim while the gesture is held so the still-open dialog remains
     // distinct from the page. Only the committed settle removes the rest of the dimming.
     val heldProgress =
         (visualProgress / DialogPredictiveBackGestureProgressFraction).coerceIn(0f, 1f)
