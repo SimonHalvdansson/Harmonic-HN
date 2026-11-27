@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.simon.harmonichackernews.ui.common.HarmonicLoadingIndicator
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -264,9 +265,13 @@ fun AccountSettingsScreen(
                         Spacer(Modifier.height(12.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Button(onClick = onCheckNow, enabled = state.supported && !busy,
+                                colors = ButtonDefaults.buttonColors(
+                                    disabledContainerColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .12f),
+                                    disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .72f),
+                                ),
                                 modifier = Modifier.settingsSearchTarget("Check now")) {
                                 if (state.operation == NotificationSettingsOperation.Checking) {
-                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    HarmonicLoadingIndicator(Modifier.size(18.dp), color = LocalContentColor.current)
                                     Spacer(Modifier.width(8.dp))
                                 } else ActionIcon(Res.drawable.ic_refresh)
                                 Text("Check now", fontFamily = AppUiFontFamily)
@@ -295,10 +300,22 @@ fun AccountSettingsScreen(
         if (username != null) {
             item(key = "account-status") {
                 val message = accountMessage ?: state.message.takeIf { it.isNotBlank() }
-                if (message != null) Text(message, Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                    .semantics { liveRegion = LiveRegionMode.Polite },
-                    color = if (state.isError || accountMessage != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = AppUiFontFamily, fontSize = 14.sp)
+                AnimatedContent(
+                    targetState = message?.let { it to (state.isError || accountMessage != null) },
+                    transitionSpec = {
+                        (fadeIn(tween(180)) togetherWith fadeOut(tween(120)))
+                            .using(SizeTransform { _, _ -> tween(240) })
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = "Account check status",
+                ) { status ->
+                    if (status != null) Text(
+                        status.first, Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                        color = if (status.second) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = AppUiFontFamily, fontSize = 14.sp,
+                    )
+                }
             }
             item(key = "recent-activity") {
                 SettingsCategory("Recent activity") {

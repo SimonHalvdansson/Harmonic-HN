@@ -154,6 +154,33 @@ class AccountSettingsTest {
         assertTrue(logout)
     }
 
+    @Test fun checkFailureMovesRecentActivitySmoothlyInBothDirections() {
+        show()
+        val recent = compose.onNodeWithText("Recent activity")
+        fun top() = recent.fetchSemanticsNode().boundsInRoot.top
+        val initial = top()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.runOnIdle {
+                state.value = state.value.copy(message = "Could not check for replies. Check your connection and try again.", isError = true)
+            }
+            compose.mainClock.advanceTimeBy(100)
+            val entering = top()
+            compose.mainClock.advanceTimeBy(500)
+            val shown = top()
+            assertTrue("Status should expand gradually: $initial, $entering, $shown", entering > initial && entering < shown)
+            compose.runOnIdle {
+                state.value = state.value.copy(message = "", isError = false,
+                    operation = com.simon.harmonichackernews.presentation.NotificationSettingsOperation.Checking)
+            }
+            compose.mainClock.advanceTimeBy(100)
+            val exiting = top()
+            compose.mainClock.advanceTimeBy(500)
+            assertTrue("Status should collapse gradually", exiting > top() && exiting < shown)
+            assertEquals(initial, top(), 1f)
+        } finally { compose.mainClock.autoAdvance = true }
+    }
+
     @Test fun filteringAnimatesActivityHeightAndEmptyViews() {
         show()
         compose.mainClock.autoAdvance = false
