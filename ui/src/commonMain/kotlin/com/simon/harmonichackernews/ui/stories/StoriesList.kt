@@ -14,6 +14,7 @@ import com.simon.harmonichackernews.ui.theme.pageBackground
 import com.simon.harmonichackernews.resources.*
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -208,6 +209,12 @@ internal fun StoriesList(
     )
     val centerFailure = !searchMode && visibleCount == 0 &&
         (controller.presentation.loadingFailed || controller.presentation.loadingFailedServerError)
+    val cachedRowsAlpha = remember(controller.mainListGeneration) {
+        Animatable(if (!searchMode && controller.presentation.cachedFallback) 0f else 1f)
+    }
+    LaunchedEffect(cachedRowsAlpha) {
+        if (cachedRowsAlpha.value < 1f) cachedRowsAlpha.animateTo(1f, tween(240))
+    }
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val density = LocalDensity.current
     val tapToUpdateExitOffsetPx = with(density) { 8.dp.toPx() }
@@ -338,10 +345,10 @@ internal fun StoriesList(
                     revealControls = !searchMode && peek.visible && listState.canScrollBackward,
                 )
             },
-            foreground = if (centerFailure) {
+            foreground = if (!searchMode) {
                 {
                     Box(Modifier.fillMaxSize().zIndex(2f)) {
-                        HeaderStatus(controller = controller, searchMode = searchMode, centerFailure = true)
+                        HeaderStatus(controller, searchMode = false, centerFailure = true, showFailure = centerFailure)
                     }
                 }
             } else null,
@@ -365,7 +372,7 @@ internal fun StoriesList(
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                         .graphicsLayer {
                             val progress = tapToUpdateExitProgress()
-                            alpha = 1f - progress
+                            alpha = (1f - progress) * cachedRowsAlpha.value
                             translationY = -tapToUpdateExitOffsetPx * progress
                         },
                     contentPadding = contentPadding,
@@ -637,16 +644,10 @@ internal fun StoriesList(
         }
     }
 
-    LaunchedEffect(controller.presentation.refreshing) {
-        if (!controller.presentation.refreshing) {
-            controller.finishPullToRefresh()
-        }
-    }
-
     if (pullToRefreshEnabled) {
+        val isPullRefreshing = controller.isPullRefreshing(searchMode)
         PullToRefreshBox(
-            isRefreshing = controller.pullToRefreshInProgress &&
-                controller.presentation.refreshing && !searchMode,
+            isRefreshing = isPullRefreshing,
             state = pullToRefreshState,
             indicator = {
                 HarmonicPullToRefreshIndicator(
@@ -658,8 +659,7 @@ internal fun StoriesList(
                             IntOffset(0, (pullIndicatorRestingInset.toPx() *
                                 pullToRefreshState.distanceFraction.coerceIn(0f, 1f)).toInt())
                         },
-                    isRefreshing = controller.pullToRefreshInProgress &&
-                        controller.presentation.refreshing && !searchMode,
+                    isRefreshing = isPullRefreshing,
                     state = pullToRefreshState,
                 )
             },

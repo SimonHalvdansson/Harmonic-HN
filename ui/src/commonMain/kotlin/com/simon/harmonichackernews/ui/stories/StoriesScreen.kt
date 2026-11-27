@@ -153,7 +153,13 @@ fun StoriesScreen(
 
     val scrollToTopRequestVersion = controller.scrollToTopRequestVersion
     var appliedTopAnchorVersion by remember(mainState) { mutableIntStateOf(0) }
+    val showingCached = controller.presentation.cachedFallback
+    var wasShowingCached by remember(mainState) { mutableStateOf(showingCached) }
     SideEffect {
+        if (!controller.searching) {
+            if (showingCached && !wasShowingCached) mainState.requestScrollToItem(0)
+            wasShowingCached = showingCached
+        }
         if (scrollToTopRequestVersion != appliedTopAnchorVersion) {
             appliedTopAnchorVersion = scrollToTopRequestVersion
             if (mainState.firstVisibleItemIndex == 0 &&

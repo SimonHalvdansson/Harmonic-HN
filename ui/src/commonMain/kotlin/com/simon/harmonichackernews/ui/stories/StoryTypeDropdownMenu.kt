@@ -23,7 +23,7 @@ internal fun StoryTypeDropdownMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
     types: List<StoryType>,
-    selectedType: StoryType,
+    selectedType: StoryType?,
     onSelected: (StoryType) -> Unit,
     fontFamily: FontFamily = AppUiFontFamily,
     fontSize: TextUnit = 16.sp,

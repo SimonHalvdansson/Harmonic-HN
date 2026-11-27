@@ -75,6 +75,12 @@ data class StoriesScreenPresentation(
 )
 
 
+internal val StoriesScreenPresentation.cachedFallback: Boolean
+    get() = showingCached && !isDownloads
+
+internal val StoriesScreenPresentation.refreshRequestActive: Boolean
+    get() = if (searching) loading else refreshing
+
 internal fun storiesScreenPresentation(
     state: StoriesState,
     platform: StoriesPlatformPresentation,

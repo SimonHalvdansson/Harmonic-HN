@@ -110,11 +110,11 @@ fun StoryListStatus(
     }
     AnimatedVisibility(
         failureVisible,
-        enter = fadeIn(tween(180)) + expandVertically(
+        enter = if (centerFailure) fadeIn(tween(180)) else fadeIn(tween(180)) + expandVertically(
             animationSpec = tween(220),
             expandFrom = Alignment.Top,
         ),
-        exit = fadeOut(tween(140)) + shrinkVertically(
+        exit = if (centerFailure) fadeOut(tween(140)) else fadeOut(tween(140)) + shrinkVertically(
             animationSpec = tween(220),
             shrinkTowards = Alignment.Top,
         ),

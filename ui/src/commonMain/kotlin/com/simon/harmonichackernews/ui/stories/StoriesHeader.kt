@@ -342,7 +342,7 @@ private fun StoriesHeaderContent(
                         modifier = Modifier.padding(start = sideStart + 12.dp, end = sideEnd, top = 4.dp, bottom = 4.dp),
                     )
                 }
-                if (settings.listSelector == StoryListSelector.CHIPS) {
+                AnimatedVisibility(settings.listSelector == StoryListSelector.CHIPS && !controller.presentation.cachedFallback) {
                     StoryTypeChips(
                         labels = controller.presentation.typeLabels,
                         selectedIndex = controller.presentation.selectedTypeIndex,
@@ -580,15 +580,13 @@ private fun MainHeader(
 ) {
     val menus = LocalStoriesHeaderMenus.current ?: rememberStoriesHeaderMenus(controller)
     val settings = controller.displaySettings ?: return
+    val cachedFallback = controller.presentation.cachedFallback
     FrontpageHeaderControls(
         settings = settings,
-        title = controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex)
-            .let { selected ->
-                if (controller.presentation.showingCached && selected != StoryType.DOWNLOADS.label) "Cached stories"
-                else selected ?: "Stories"
-            },
+        title = if (cachedFallback) "Cached stories"
+            else controller.presentation.typeLabels.getOrNull(controller.presentation.selectedTypeIndex) ?: "Stories",
         typeLabels = controller.presentation.typeLabels,
-        selectedTypeIndex = controller.presentation.selectedTypeIndex,
+        selectedTypeIndex = if (cachedFallback) -1 else controller.presentation.selectedTypeIndex,
         menus = menus,
         onTypeSelected = onTypeSelected,
         showRefreshMenuItem = showRefreshMenuItem,
@@ -596,7 +594,7 @@ private fun MainHeader(
         onSearch = controller.listener::onOpenSearch,
         onRefresh = controller::refresh,
         modifier = modifier,
-        forceDropdown = forceDropdown,
+        forceDropdown = forceDropdown || cachedFallback,
         moreMenu = { showRefresh, showSearch ->
             StoriesMoreMenuControl(
                 controller = controller,
@@ -803,7 +801,7 @@ internal fun FrontpageHeaderControls(
                             expanded = useDropdown && menus.typesExpanded,
                             onDismiss = { menus.typesExpanded = false },
                             types = typeLabels.map(StoryType::fromLabel),
-                            selectedType = StoryType.fromLabel(typeLabels.getOrNull(selectedTypeIndex)),
+                            selectedType = typeLabels.getOrNull(selectedTypeIndex)?.let(StoryType::fromLabel),
                             fontFamily = typography.family,
                             fontSize = typography.storiesDropdownItemSize.sp,
                             onSelected = { type ->
@@ -918,7 +916,10 @@ private fun SearchHeader(
         menuTextColor = colors.onSurface,
         fontFamily = AppUiFontFamily,
         onDraftChanged = controller::updateSearchDraft,
-        onSearch = controller.listener::onSearch,
+        onSearch = { query ->
+            controller.finishPullToRefresh()
+            controller.listener.onSearch(query)
+        },
         onClose = controller.listener::onCloseSearch,
         consumeFocusRequest = controller.listener::consumeSearchFocusRequest,
         onOptionSelected = controller.listener::onSearchOption,
@@ -1045,7 +1046,7 @@ internal fun HeaderStatus(
     showFailure: Boolean = true,
 ) {
     val colors = MaterialTheme.colorScheme
-    if (!searchMode && controller.presentation.showEmptyFeed) {
+    if (!centerFailure && !searchMode && controller.presentation.showEmptyFeed) {
         val filtered = controller.canFilterNewStories && controller.newStoriesFilter.active
         val downloads = controller.presentation.isDownloads
         Column(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 24.dp)) {
@@ -1073,15 +1074,15 @@ internal fun HeaderStatus(
     }
     StoryListStatus(
         state = StoryListStatusState(
-            loading = controller.presentation.loading,
+            loading = !centerFailure && controller.presentation.loading && !controller.isPullRefreshing(searchMode),
             loadingFailed = controller.presentation.loadingFailed,
             serverError = controller.presentation.loadingFailedServerError,
             failureMessage = controller.presentation.loadingFailedMessage,
             showCachedAction = controller.presentation.showCachedAction,
-            showEmptySavedList = controller.presentation.showEmptySavedList,
+            showEmptySavedList = !centerFailure && controller.presentation.showEmptySavedList,
             emptySavedListText = controller.presentation.emptySavedListText,
             emptySavedListIcon = controller.presentation.emptySavedListIcon,
-            showEmptySearch = controller.presentation.showEmptySearch,
+            showEmptySearch = !centerFailure && controller.presentation.showEmptySearch,
         ),
         searchMode = searchMode,
         normalColor = colors.onSurface,

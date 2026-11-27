@@ -171,6 +171,14 @@ class StoriesScreenController private constructor(
         // Keep the feature's immutable list instances. Compose observes independent list,
         // shell and per-row resource slices, so image arrivals do not invalidate the whole feed.
         val nextShell = storiesScreenPresentation(state, platform)
+        // Search can publish the old idle state between the gesture and the start of its request.
+        val requestFinished = shellState.refreshRequestActive && !nextShell.refreshRequestActive
+        if (requestFinished || state.searching != previousContent.searching ||
+            state.searchDraft != previousContent.searchDraft || state.search.options != previousContent.search.options ||
+            state.currentType != previousContent.currentType
+        ) {
+            finishPullToRefresh()
+        }
         if (scrollToTopAfterRefresh && state.refreshIndicatorShowing) {
             refreshInProgressObserved = true
         }
@@ -180,7 +188,7 @@ class StoriesScreenController private constructor(
             (previousContent.searching || !previousContent.currentType.isHistory)
         // A cached/live replacement must discard outgoing lazy row animation layers, which can
         // otherwise remain visible through gaps between the replacement stories.
-        if (shellState.showingCached != state.activeList.showingCached ||
+        if (previousContent.mainList.showingCached != state.mainList.showingCached ||
             (requestedRefreshCompleted && tapToUpdateRefreshStarted)
         ) {
             mainListGeneration++
@@ -301,6 +309,10 @@ class StoriesScreenController private constructor(
     fun beginPullToRefresh() {
         pullToRefreshInProgress = true
     }
+
+    fun isPullRefreshing(searchMode: Boolean): Boolean =
+        pullToRefreshInProgress && searchMode == presentation.searching &&
+            presentation.refreshRequestActive
 
     /** Refreshes the active feed and requests an exact top anchor after its new data is applied. */
     fun refresh() {
